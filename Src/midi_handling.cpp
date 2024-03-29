@@ -1,5 +1,6 @@
 #include "midi_handling.h"
 #include "midi.h"
+#include "midi_Defs.h"
 
 #ifdef USE_BLE_MIDI
 #include <BLEMIDI_Transport.h>
@@ -9,47 +10,79 @@
 #include "SPI.h"
 #endif
 #include <Adafruit_TinyUSB.h>
+#include <device_api/device_api.h>
 
+#define SYSEX_START	0xF0
+#define SYSEX_END		0xF7
+
+// To avoid all MIDI ports have overly large SysEx buffers, Device API is supported only on BLE and USBD
+struct DeviceApiPortSettings : public MIDI_NAMESPACE::DefaultSettings
+{
+	static const bool Use1ByteParsing = true;
+	static const unsigned SysExMaxSize = 64*1024; // Accept SysEx messages up to 64K bytes long.
+};
+
+struct StandardPortSettings : public midi::DefaultSettings
+{
+    static const unsigned SysExMaxSize = 8*1024; // Accept SysEx messages up to 8K bytes long.
+};
+
+// Reception of sysex messages is locked to a single source
+// This prevents contamination from multiple sources to the main buffer
+uint8_t sysExBuffer[64*1024];
+MidiInterfaceType sysExRxLock = MidiNone;
+SysExCommandType sysExCommand = SysExGeneral;
+uint8_t receivedSysExAddress = 0;
+uint8_t sysExRxComplete = 0;
+uint32_t sysExBufferIndex = 0;
 
 
 // Global application callbacks
-void (*mControlChangeCallback)(MidiInterface interface, uint8_t channel, uint8_t number, uint8_t value) = nullptr;
-void (*mSystemExclusiveCallback)(MidiInterface interface, uint8_t * array, unsigned size) = nullptr;
-void (*mProgramChangeCallback)(MidiInterface interface, uint8_t channel, uint8_t number) = nullptr;
+void (*mControlChangeCallback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value) = nullptr;
+void (*mSystemExclusiveCallback)(MidiInterfaceType interface, uint8_t * array, unsigned size) = nullptr;
+void (*mProgramChangeCallback)(MidiInterfaceType interface, uint8_t channel, uint8_t number) = nullptr;
 
 //-------------- MIDI Input/Output Objects & Handling --------------//
 // Bluetooth Low Energy
 #ifdef USE_BLE_MIDI
-BLEMIDI_CREATE_INSTANCE("uLoopBLE", midiBle);
+BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> BLUEMIDI("uLoopBLE"); \
+MIDI_NAMESPACE::MidiInterface<BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE>,DeviceApiPortSettings> blueMidi((BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> &)BLUEMIDI);
+
 // State variables
 bool bleConnected = false;
 bool bleAuthenticated = false;
 #endif
+
 // USBD
 #ifdef USE_USBD_MIDI
 Adafruit_USBD_MIDI usbd_midi;
 MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usbd_midi, usbdMidi);
+
+//MIDI_NAMESPACE::SerialMIDI<Adafruit_USBD_MIDI> USBDMIDI(usbd_midi);\
+//MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<Adafruit_USBD_MIDI>> usbdMidi((MIDI_NAMESPACE::SerialMIDI<Adafruit_USBD_MIDI>&)USBDMIDI);
+
 #endif
 // USBH
 
 
-
 // Serial0
 #ifdef USE_SERIAL0_MIDI
-MIDI_CREATE_INSTANCE(HardwareSerial, Serial0, serial0Midi);
+MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial, Serial0, serial0Midi, StandardPortSettings);
 #endif
 // Serial1
 #ifdef USE_SERIAL1_MIDI
-MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, serial1Midi);
+MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial, Serial1, serial1Midi, StandardPortSettings);
 #endif
 // Serial2
 #ifdef USE_SERIAL2_MIDI
-MIDI_CREATE_INSTANCE(HardwareSerial, Serial2, serial2Midi);
+MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial, Serial2, serial2Midi, StandardPortSettings);
 #endif
 
 
 //-------------- Private Function Prototypes --------------//
 // USBD
+void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size);
+
 #ifdef USE_USBD_MIDI
 void usbdMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t value);
 void usbdMidi_ProgramChangeCallback(uint8_t channel, uint8_t number);
@@ -65,9 +98,9 @@ void usbhMidi_SysexCallback(uint8_t * array, unsigned size);
 
 // BLE
 #ifdef USE_BLE_MIDI
-void bleMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t value);
-void bleMidi_ProgramChangeCallback(uint8_t channel, uint8_t number);
-void bleMidi_SysexCallback(uint8_t * array, unsigned size);
+void blueMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t value);
+void blueMidi_ProgramChangeCallback(uint8_t channel, uint8_t number);
+void blueMidi_SysexCallback(uint8_t * array, unsigned size);
 
 void onConnected();
 void onDisconnected();
@@ -116,12 +149,12 @@ void midi_Init()
 
 	// BLE
 #ifdef USE_BLE_MIDI
-	midiBle.setHandleControlChange(bleMidi_ControlChangeCallback);
-	midiBle.setHandleProgramChange(bleMidi_ProgramChangeCallback);
-	midiBle.setHandleSystemExclusive(bleMidi_SysexCallback);
+	blueMidi.setHandleControlChange(blueMidi_ControlChangeCallback);
+	blueMidi.setHandleProgramChange(blueMidi_ProgramChangeCallback);
+	blueMidi.setHandleSystemExclusive(blueMidi_SysexCallback);
 
-	BLEmidiBle.setHandleConnected(onConnected);
-	BLEmidiBle.setHandleDisconnected(onDisconnected);
+	BLUEMIDI.setHandleConnected(onConnected);
+	BLUEMIDI.setHandleDisconnected(onDisconnected);
 #endif
 	// WiFi
 
@@ -150,7 +183,7 @@ void midi_Init()
 	// Begin MIDI interfaces
 	// BLE
 #ifdef USE_BLE_MIDI
-	midiBle.begin();
+	blueMidi.begin();
 #endif
 	// USBD
 #ifdef USE_USBD_MIDI
@@ -166,7 +199,7 @@ void midi_ReadAll()
 {
 	// BLE
 #ifdef USE_BLE_MIDI
-	midiBle.read();
+	blueMidi.read();
 #endif
 	// USBD
 #ifdef USE_USBD_MIDI
@@ -179,23 +212,98 @@ void midi_ReadAll()
 }
 
 // Global MIDI callback assignment
-void midi_AssignControlChangeCallback(void (*callback)(MidiInterface interface, uint8_t channel, uint8_t number, uint8_t value))
+void midi_AssignControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value))
 {
 	mControlChangeCallback = callback;
 }
 
-void midi_AssignProgramChangeCallback(void (*callback)(MidiInterface interface, uint8_t channel, uint8_t number))
+void midi_AssignProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number))
 {
 	mProgramChangeCallback = callback;
 }
 
-void midi_AssignSysemExclusiveCallback(void (*callback)(MidiInterface interface, uint8_t* array, unsigned size))
+void midi_AssignSysemExclusiveCallback(void (*callback)(MidiInterfaceType interface, uint8_t* array, unsigned size))
 {
 	mSystemExclusiveCallback = callback;
 }
 
+void midi_sendDeviceApiSysexString(const char* array, size_t size)
+{
+	usbdMidi.sendSysEx(size, (uint8_t*)array);
+}
 
-//-------------- Private Function Definitions --------------//
+
+//-------------- Local Function Definitions --------------//
+void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size)
+{
+	// If this is the first SysEx packet received in the reception
+	if(array[0] == SYSEX_START)
+	{
+		// Check for a valid received address
+		if(array[1] == SYSEX_ADDRESS_BYTE1 &&
+			array[2] == SYSEX_ADDRESS_BYTE2 &&
+			array[3] == SYSEX_ADDRESS_BYTE3)
+		{
+			receivedSysExAddress = 1;
+			if(array[4] == SYSEX_DEVICE_API_COMMAND)
+				sysExCommand = SysExDeviceApi;
+			else if(array[4] == SYSEX_PETAL_COMMAND)
+				sysExCommand = SysExPetal;
+			else
+				sysExCommand = SysExGeneral;
+
+			// For non-general SysEx receptions
+			if(sysExCommand != SysExGeneral)
+			{
+				sysExRxLock = interface;
+				// Copy the received SysEx address to the buffer
+				// The start/end, address, and command bytes are not copied
+				memcpy(&sysExBuffer[0], &array[5], size-6);
+				sysExBufferIndex = size-6;
+			}
+		}
+		else
+		{
+			sysExRxLock = MidiNone;
+			sysExCommand = SysExGeneral;
+		}
+		if(array[size-1] == SYSEX_END) sysExRxComplete = 1;
+	}
+	// Continuation of existing reception
+	else if(array[0] == SYSEX_END)
+	{
+		// For non-general SysEx receptions
+		if(sysExCommand != SysExGeneral)
+		{
+			// Copy the received SysEx address to the buffer
+			// The start/end, address, and command bytes are not copied
+			memcpy(&sysExBuffer[sysExBufferIndex], &array[5], size-2);
+			sysExBufferIndex += size-2;
+		}
+		if(array[size-1] == SYSEX_END) sysExRxComplete = 1;
+	}
+	if(sysExRxComplete)
+	{
+		Serial.printf("SysEx Complete with %d bytes with command type %d on port %d \n", sysExBufferIndex, sysExCommand, sysExRxLock);
+		if(sysExCommand == SysExDeviceApi)
+		{
+			deviceApi_Handler((char*)sysExBuffer, MIDI_TRANSPORT);
+		}
+		else if(sysExCommand == SysExPetal)
+		{
+
+		}
+		else if(sysExCommand == SysExGeneral && mSystemExclusiveCallback != nullptr)
+		{
+			mSystemExclusiveCallback(MidiUSBD, sysExBuffer, sysExBufferIndex);
+		}
+		sysExRxComplete = 0;
+		sysExBufferIndex = 0;
+		sysExRxLock = MidiNone;
+		sysExCommand = SysExGeneral;
+	}
+}
+
 // USBD
 #ifdef USE_USBD_MIDI
 void usbdMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t value)
@@ -222,13 +330,12 @@ void usbdMidi_ProgramChangeCallback(uint8_t channel, uint8_t number)
 
 void usbdMidi_SysexCallback(uint8_t * array, unsigned size)
 {
-	if (mSystemExclusiveCallback != nullptr)
-	{
-		mSystemExclusiveCallback(MidiUSBD, array, size);
-	}
+	processSysEx(MidiUSBD, array, size);
 #if(CORE_DEBUG_LEVEL >= 4)
 	Serial.printf("USBD MIDI SysEx: Size: %d\n", size);
 #endif
+	Serial.println(array[0]);
+	Serial.println(array[size-1]);
 }
 #endif
 
@@ -270,7 +377,7 @@ void usbhMidi_SysexCallback(uint8_t * array, unsigned size)
 
 // BLE
 #ifdef USE_BLE_MIDI
-void bleMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t value)
+void blueMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t value)
 {
 	if (mControlChangeCallback != nullptr)
 	{
@@ -281,7 +388,7 @@ void bleMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t valu
 #endif
 }
 
-void bleMidi_ProgramChangeCallback(uint8_t channel, uint8_t number)
+void blueMidi_ProgramChangeCallback(uint8_t channel, uint8_t number)
 {
 	if (mProgramChangeCallback != nullptr)
 	{
@@ -292,7 +399,7 @@ void bleMidi_ProgramChangeCallback(uint8_t channel, uint8_t number)
 #endif
 }
 
-void bleMidi_SysexCallback(uint8_t * array, unsigned size)
+void blueMidi_SysexCallback(uint8_t * array, unsigned size)
 {
 	if (mSystemExclusiveCallback != nullptr)
 	{
@@ -313,10 +420,6 @@ void onDisconnected()
 	bleConnected = false;
 }
 #endif
-
-
-// WiFi
-
 
 // Serial0
 #ifdef USE_SERIAL0_MIDI
@@ -389,7 +492,6 @@ void serial1Midi_SysexCallback(uint8_t * array, unsigned size)
 #endif
 }
 #endif
-
 
 // Serial2
 #ifdef USE_SERIAL2_MIDI

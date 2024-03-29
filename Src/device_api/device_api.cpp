@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <Arduino.h>
+#include "midi_handling.h"
 
 
 #define USB_DATA_LEN					8192
@@ -22,6 +23,7 @@ char data[20];									// Incoming command type packet
 char usbTxBuf[64];
 
 // C++ Wrapper Declarations
+// These must be implemented externally
 // Transmit functions
 void sendCheckResponse(uint8_t transport);
 void sendGlobalSettings(uint8_t transport);
@@ -48,31 +50,65 @@ void resetDeviceApi();
 void sendInvalidCommandPacket(uint8_t transport)
 {
 	const char buffer[] = USB_INVALID_COMMAND_STRING USB_PACKET_DELIMITER "\n";
-	Serial.write(buffer, strlen(buffer));
+	if(transport == MIDI_TRANSPORT)
+	{
+		midi_sendDeviceApiSysexString(buffer, strlen(buffer));
+	}
+	else if(transport == USB_CDC_TRANSPORT)
+	{
+		Serial.write(buffer, strlen(buffer));
+	}
 }
 
 void sendOkPacket(uint8_t transport)
 {
 	const char buffer[] = USB_VALID_COMMAND_STRING USB_PACKET_DELIMITER "\n";
-	Serial.write(buffer, strlen(buffer));
+	if(transport == MIDI_TRANSPORT)
+	{
+		midi_sendDeviceApiSysexString(buffer, strlen(buffer));
+	}
+	else if(transport == USB_CDC_TRANSPORT)
+	{
+		Serial.write(buffer, strlen(buffer));
+	}
 }
 
 void sendTxOverflowMessage(uint8_t transport)
 {
 	const char buffer[] = USB_TX_BUF_OVERFLOW_STRING USB_PACKET_DELIMITER "\n";
-	Serial.write(buffer, strlen(buffer));
+	if(transport == MIDI_TRANSPORT)
+	{
+		midi_sendDeviceApiSysexString(buffer, strlen(buffer));
+	}
+	else if(transport == USB_CDC_TRANSPORT)
+	{
+		Serial.write(buffer, strlen(buffer));
+	}
 }
 
 void sendInvalidTerminationPacket(uint8_t transport)
 {
 	const char buffer[] = USB_INVALID_TERMINATOR_STRING USB_PACKET_DELIMITER "\n";
-	Serial.write(buffer, strlen(buffer));
+	if(transport == MIDI_TRANSPORT)
+	{
+		midi_sendDeviceApiSysexString(buffer, strlen(buffer));
+	}
+	else if(transport == USB_CDC_TRANSPORT)
+	{
+		Serial.write(buffer, strlen(buffer));
+	}
 }
-
 
 void sendEventPacket(char* message, uint8_t transport)
 {
-	Serial.write(message, strlen(message));
+	if(transport == MIDI_TRANSPORT)
+	{
+		midi_sendDeviceApiSysexString(message, strlen(message));
+	}
+	else if(transport == USB_CDC_TRANSPORT)
+	{
+		Serial.write(message, strlen(message));
+	}
 }
 
 void resetDeviceApi()

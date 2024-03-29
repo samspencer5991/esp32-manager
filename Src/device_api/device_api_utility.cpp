@@ -20,7 +20,7 @@ void sendPacketTermination(uint8_t transport)
 		const uint8_t txStr[] = {"~\n"};
 		Serial.write(txStr, 2);
 	}
-	else if(transport == USB_MIDI_TRANSPORT)
+	else if(transport == MIDI_TRANSPORT)
 	{
 		// Sends terminating character, new-line for readability, and end of SysEx byte
 		uint8_t termBuffer[] = {'~', '\n', 0xF7};

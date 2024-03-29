@@ -379,7 +379,7 @@
 #define USB_BUTTON_HOLD_RELEASE_STRING					"BUTTON HOLD RELEASE"
 
 #define USB_CDC_TRANSPORT			0
-#define USB_MIDI_TRANSPORT			1
+#define MIDI_TRANSPORT				1
 
 
 extern const char termChar[];
