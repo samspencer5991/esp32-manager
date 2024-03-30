@@ -31,6 +31,7 @@ struct StandardPortSettings : public midi::DefaultSettings
 // This prevents contamination from multiple sources to the main buffer
 uint8_t sysExBuffer[64*1024];
 MidiInterfaceType sysExRxLock = MidiNone;
+MidiInterfaceType sysExLastReceptionType = MidiNone;
 SysExCommandType sysExCommand = SysExGeneral;
 uint8_t receivedSysExAddress = 0;
 uint8_t sysExRxComplete = 0;
@@ -188,6 +189,7 @@ void midi_Init()
 	// USBD
 #ifdef USE_USBD_MIDI
 	usbdMidi.begin();
+	usbdMidi.turnThruOff();
 #endif
 	// Serial0
 #ifdef USE_SERIAL0_MIDI
@@ -267,7 +269,12 @@ void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size)
 			sysExRxLock = MidiNone;
 			sysExCommand = SysExGeneral;
 		}
-		if(array[size-1] == SYSEX_END) sysExRxComplete = 1;
+		if(array[size-1] == SYSEX_END)
+		{
+			sysExRxComplete = 1;
+			sysExLastReceptionType = sysExRxLock;
+			sysExRxLock = MidiNone;
+		}
 	}
 	// Continuation of existing reception
 	else if(array[0] == SYSEX_END)
@@ -280,11 +287,16 @@ void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size)
 			memcpy(&sysExBuffer[sysExBufferIndex], &array[5], size-2);
 			sysExBufferIndex += size-2;
 		}
-		if(array[size-1] == SYSEX_END) sysExRxComplete = 1;
+		if(array[size-1] == SYSEX_END)
+		{
+			sysExRxComplete = 1;
+			sysExLastReceptionType = sysExRxLock;
+			sysExRxLock = MidiNone;
+		}
 	}
 	if(sysExRxComplete)
 	{
-		Serial.printf("SysEx Complete with %d bytes with command type %d on port %d \n", sysExBufferIndex, sysExCommand, sysExRxLock);
+		Serial.printf("SysEx Complete with %d bytes with command type %d on port %d \n", sysExBufferIndex, sysExCommand, interface);
 		if(sysExCommand == SysExDeviceApi)
 		{
 			deviceApi_Handler((char*)sysExBuffer, MIDI_TRANSPORT);

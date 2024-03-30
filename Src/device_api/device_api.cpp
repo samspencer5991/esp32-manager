@@ -128,7 +128,20 @@ DeviceApiState deviceApi_Handler(char* appData, uint8_t transport)
 	{
 		// Fetch the four character command using a '~' for delimiting
 		char command[6];
-		size_t len = Serial.readBytesUntil('~', command, 5);
+		size_t len = 0;
+		if(transport == USB_CDC_TRANSPORT)
+			len = Serial.readBytesUntil('~', command, 5);
+		else if(transport == MIDI_TRANSPORT)
+		{
+			for(uint8_t i=0; i<5; i++)
+			{
+				command[i] = appData[i];
+				if(command[i] == '~')
+				{
+					len = i;
+				}
+			}
+		}
 
 		// Reset the API and send an error message if no valid command terminator was found
 		if(len != 4)
