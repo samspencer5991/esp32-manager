@@ -37,6 +37,12 @@ uint8_t receivedSysExAddress = 0;
 uint8_t sysExRxComplete = 0;
 uint32_t sysExBufferIndex = 0;
 
+// Local variables for using the ESP32 as a MIDI bridge adapter
+#ifdef SPI_MIDI_BRIDGE
+// Double buffering is used to enable asynchronous SPI transfers to the host while maintaining reception
+uint8_t midiBridgeBuf[2*1024];
+#endif
+
 
 // Global application callbacks
 void (*mControlChangeCallback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value) = nullptr;
@@ -72,15 +78,15 @@ MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usbd_midi, usbdMidi);
 
 // Serial0
 #ifdef USE_SERIAL0_MIDI
-MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial, Serial0, serial0Midi, StandardPortSettings);
+MIDI_CREATE_INSTANCE(HardwareSerial, Serial0, serial0Midi);
 #endif
 // Serial1
 #ifdef USE_SERIAL1_MIDI
-MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial, Serial1, serial1Midi, StandardPortSettings);
+MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, serial1Midi);
 #endif
 // Serial2
 #ifdef USE_SERIAL2_MIDI
-MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial, Serial2, serial2Midi, StandardPortSettings);
+MIDI_CREATE_INSTANCE(HardwareSerial, Serial2, serial2Midi);
 #endif
 
 
