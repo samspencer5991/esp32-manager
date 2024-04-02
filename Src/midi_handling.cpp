@@ -43,6 +43,10 @@ void (*mControlChangeCallback)(MidiInterfaceType interface, uint8_t channel, uin
 void (*mSystemExclusiveCallback)(MidiInterfaceType interface, uint8_t * array, unsigned size) = nullptr;
 void (*mProgramChangeCallback)(MidiInterfaceType interface, uint8_t channel, uint8_t number) = nullptr;
 
+void (*mPetalControlChangeCallback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value) = nullptr;
+void (*mPetalSystemExclusiveCallback)(MidiInterfaceType interface, uint8_t * array, unsigned size) = nullptr;
+void (*mPetalProgramChangeCallback)(MidiInterfaceType interface, uint8_t channel, uint8_t number) = nullptr;
+
 //-------------- MIDI Input/Output Objects & Handling --------------//
 // Bluetooth Low Energy
 #ifdef USE_BLE_MIDI
@@ -229,9 +233,29 @@ void midi_AssignSysemExclusiveCallback(void (*callback)(MidiInterfaceType interf
 	mSystemExclusiveCallback = callback;
 }
 
-void midi_sendDeviceApiSysexString(const char* array, size_t size)
+void midi_AssignPetalControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value))
+{
+	mPetalControlChangeCallback = callback;
+}
+
+void midi_AssignPetalProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number))
+{
+	mPetalProgramChangeCallback = callback;
+}
+
+void midi_AssignPetalSysemExclusiveCallback(void (*callback)(MidiInterfaceType interface, uint8_t* array, unsigned size))
+{
+	mPetalSystemExclusiveCallback = callback;
+}
+
+void midi_SendDeviceApiSysExString(const char* array, size_t size)
 {
 	usbdMidi.sendSysEx(size, (uint8_t*)array);
+}
+
+void midi_SendPetalSysEx(const uint8_t* data, size_t size)
+{
+
 }
 
 

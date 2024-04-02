@@ -37,7 +37,12 @@ void midi_AssignControlChangeCallback(void (*callback)(MidiInterfaceType interfa
 void midi_AssignProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number));
 void midi_AssignSysemExclusiveCallback(void (*callback)(MidiInterfaceType interface, uint8_t* array, unsigned size));
 
-void midi_sendDeviceApiSysexString(const char* array, unsigned size);
+void midi_AssignPetalControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value));
+void midi_AssignPetalProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number));
+void midi_AssignPetalSysemExclusiveCallback(void (*callback)(MidiInterfaceType interface, uint8_t* array, unsigned size));
+
+void midi_SendDeviceApiSysExString(const char* array, unsigned size);
+void midi_SendPetalSysex(const uint8_t* data, unsigned size);
 
 void midih_loop();
 void midih_setup();
