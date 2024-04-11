@@ -37,12 +37,6 @@ uint8_t receivedSysExAddress = 0;
 uint8_t sysExRxComplete = 0;
 uint32_t sysExBufferIndex = 0;
 
-// Local variables for using the ESP32 as a MIDI bridge adapter
-#ifdef SPI_MIDI_BRIDGE
-// Double buffering is used to enable asynchronous SPI transfers to the host while maintaining reception
-uint8_t midiBridgeBuf[2*1024];
-#endif
-
 
 // Global application callbacks
 void (*mControlChangeCallback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value) = nullptr;
@@ -56,7 +50,7 @@ void (*mPetalProgramChangeCallback)(MidiInterfaceType interface, uint8_t channel
 //-------------- MIDI Input/Output Objects & Handling --------------//
 // Bluetooth Low Energy
 #ifdef USE_BLE_MIDI
-BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> BLUEMIDI("uLoopBLE"); \
+BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> BLUEMIDI(BLE_DEVICE_NAME); \
 MIDI_NAMESPACE::MidiInterface<BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE>,DeviceApiPortSettings> blueMidi((BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> &)BLUEMIDI);
 
 // State variables
