@@ -52,7 +52,7 @@ void sendInvalidCommandPacket(uint8_t transport)
 	const char buffer[] = USB_INVALID_COMMAND_STRING USB_PACKET_DELIMITER "\n";
 	if(transport == MIDI_TRANSPORT)
 	{
-		midi_SendDeviceApiSysExString(buffer, strlen(buffer));
+		midi_SendDeviceApiSysExString(buffer, strlen(buffer), 0);
 	}
 	else if(transport == USB_CDC_TRANSPORT)
 	{
@@ -65,7 +65,7 @@ void sendOkPacket(uint8_t transport)
 	const char buffer[] = USB_VALID_COMMAND_STRING USB_PACKET_DELIMITER "\n";
 	if(transport == MIDI_TRANSPORT)
 	{
-		midi_SendDeviceApiSysExString(buffer, strlen(buffer));
+		midi_SendDeviceApiSysExString(buffer, strlen(buffer), 0);
 	}
 	else if(transport == USB_CDC_TRANSPORT)
 	{
@@ -78,7 +78,7 @@ void sendTxOverflowMessage(uint8_t transport)
 	const char buffer[] = USB_TX_BUF_OVERFLOW_STRING USB_PACKET_DELIMITER "\n";
 	if(transport == MIDI_TRANSPORT)
 	{
-		midi_SendDeviceApiSysExString(buffer, strlen(buffer));
+		midi_SendDeviceApiSysExString(buffer, strlen(buffer), 0);
 	}
 	else if(transport == USB_CDC_TRANSPORT)
 	{
@@ -91,7 +91,7 @@ void sendInvalidTerminationPacket(uint8_t transport)
 	const char buffer[] = USB_INVALID_TERMINATOR_STRING USB_PACKET_DELIMITER "\n";
 	if(transport == MIDI_TRANSPORT)
 	{
-		midi_SendDeviceApiSysExString(buffer, strlen(buffer));
+		midi_SendDeviceApiSysExString(buffer, strlen(buffer), 0);
 	}
 	else if(transport == USB_CDC_TRANSPORT)
 	{
@@ -103,7 +103,7 @@ void sendEventPacket(char* message, uint8_t transport)
 {
 	if(transport == MIDI_TRANSPORT)
 	{
-		midi_SendDeviceApiSysExString(message, strlen(message));
+		midi_SendDeviceApiSysExString(message, strlen(message), 0);
 	}
 	else if(transport == USB_CDC_TRANSPORT)
 	{

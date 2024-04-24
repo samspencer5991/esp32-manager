@@ -15,6 +15,10 @@
 #define SYSEX_START	0xF0
 #define SYSEX_END		0xF7
 
+#ifndef BLE_DEVICE_NAME
+#define BLE_DEVICE_NAME "ESP32-MIDI"
+#endif
+
 // To avoid all MIDI ports have overly large SysEx buffers, Device API is supported only on BLE and USBD
 struct DeviceApiPortSettings : public MIDI_NAMESPACE::DefaultSettings
 {
@@ -248,16 +252,26 @@ void midi_AssignPetalSysemExclusiveCallback(void (*callback)(MidiInterfaceType i
 	mPetalSystemExclusiveCallback = callback;
 }
 
-void midi_SendDeviceApiSysExString(const char* array, size_t size)
+void midi_SendDeviceApiSysExString(const char* array, unsigned size, uint8_t containsFraming)
 {
-	usbdMidi.sendSysEx(size, (uint8_t*)array);
+	usbdMidi.sendSysEx(size, (uint8_t*)array, containsFraming);
 }
 
+// Petal integration specific functions
 void midi_SendPetalSysEx(const uint8_t* data, size_t size)
 {
 
 }
 
+void midi_SendPetalControlChange(uint8_t channel, uint8_t number, uint8_t value)
+{
+
+}
+
+void midi_SendPetalProgramChange(uint8_t channel, uint8_t number)
+{
+
+}
 
 //-------------- Local Function Definitions --------------//
 void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size)
