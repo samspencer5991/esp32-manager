@@ -11,5 +11,9 @@
     "platforms": "espressif32",
     "build": {
         "libArchive": false
-    }
+    },
+	 "dependencies":
+	{
+		"external-repo": "https://github.com/samspencer5991/Device-API.git"
+	}
 }
