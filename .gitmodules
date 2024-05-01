@@ -1,0 +1,3 @@
+[submodule "Src/Device-API"]
+	path = Src/Device-API
+	url = https://github.com/samspencer5991/Device-API.git
