@@ -7,7 +7,6 @@ WiFiManager wifiManager;
 
 bool wifiConnected = false;
 
-
 bool wifi_Connect(const char* hostName, const char* apName, const char* apPassword)
 {
 	if(hostName != NULL)
@@ -20,8 +19,10 @@ bool wifi_Connect(const char* hostName, const char* apName, const char* apPasswo
   	}
 	else
 	{
+#if(CORE_DEBUG_LEVEL>=4)
 		Serial.print("WiFi connected! @ ");
 		Serial.println(WiFi.macAddress());
+#endif
 		ota_Begin();
 		wifiConnected = true;
 	}

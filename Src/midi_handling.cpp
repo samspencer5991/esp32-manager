@@ -10,14 +10,10 @@
 #include "SPI.h"
 #endif
 #include <Adafruit_TinyUSB.h>
-#include <device_api/device_api.h>
+#include <device_api.h>
 
 #define SYSEX_START	0xF0
 #define SYSEX_END		0xF7
-
-#ifndef BLE_DEVICE_NAME
-#define BLE_DEVICE_NAME "ESP32-MIDI"
-#endif
 
 // To avoid all MIDI ports have overly large SysEx buffers, Device API is supported only on BLE and USBD
 struct DeviceApiPortSettings : public MIDI_NAMESPACE::DefaultSettings
@@ -54,7 +50,7 @@ void (*mPetalProgramChangeCallback)(MidiInterfaceType interface, uint8_t channel
 //-------------- MIDI Input/Output Objects & Handling --------------//
 // Bluetooth Low Energy
 #ifdef USE_BLE_MIDI
-BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> BLUEMIDI(BLE_DEVICE_NAME); \
+BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> BLUEMIDI("uLoopBLE"); \
 MIDI_NAMESPACE::MidiInterface<BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE>,DeviceApiPortSettings> blueMidi((BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> &)BLUEMIDI);
 
 // State variables
@@ -76,15 +72,15 @@ MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usbd_midi, usbdMidi);
 
 // Serial0
 #ifdef USE_SERIAL0_MIDI
-MIDI_CREATE_INSTANCE(HardwareSerial, Serial0, serial0Midi);
+MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial, Serial0, serial0Midi, StandardPortSettings);
 #endif
 // Serial1
 #ifdef USE_SERIAL1_MIDI
-MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, serial1Midi);
+MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial, Serial1, serial1Midi, StandardPortSettings);
 #endif
 // Serial2
 #ifdef USE_SERIAL2_MIDI
-MIDI_CREATE_INSTANCE(HardwareSerial, Serial2, serial2Midi);
+MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial, Serial2, serial2Midi, StandardPortSettings);
 #endif
 
 
@@ -257,21 +253,11 @@ void midi_SendDeviceApiSysExString(const char* array, unsigned size, uint8_t con
 	usbdMidi.sendSysEx(size, (uint8_t*)array, containsFraming);
 }
 
-// Petal integration specific functions
 void midi_SendPetalSysEx(const uint8_t* data, size_t size)
 {
 
 }
 
-void midi_SendPetalControlChange(uint8_t channel, uint8_t number, uint8_t value)
-{
-
-}
-
-void midi_SendPetalProgramChange(uint8_t channel, uint8_t number)
-{
-
-}
 
 //-------------- Local Function Definitions --------------//
 void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size)
