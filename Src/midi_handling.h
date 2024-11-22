@@ -1,7 +1,10 @@
+#pragma once
+
 #ifndef MIDI_HANDLING_H_
 #define MIDI_HANDLING_H_
 
 #include "stdint.h"
+#include "midi.h"
 
 #define SYSEX_ADDRESS_BYTE1 			0x00
 #define SYSEX_ADDRESS_BYTE2			0x22
@@ -9,6 +12,7 @@
 
 #define SYSEX_DEVICE_API_COMMAND 	0x01
 #define SYSEX_PETAL_COMMAND 			0x02
+
 
 typedef enum
 {
@@ -28,6 +32,10 @@ typedef enum
 	SysExDeviceApi,
 	SysExPetal
 } SysExCommandType;
+
+#ifdef USE_USBH_MIDI
+void midi_SetUsbHostPins(uint8_t spiInstance, uint8_t csPin, uint8_t intPin);
+#endif
 
 void midi_Init();
 void midi_ReadAll();

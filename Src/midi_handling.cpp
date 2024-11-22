@@ -1,6 +1,6 @@
-#include "midi_handling.h"
+#include "esp32_def.h"
 #include "midi.h"
-#include "midi_Defs.h"
+#include "midi_handling.h"
 
 #ifdef USE_BLE_MIDI
 #include <BLEMIDI_Transport.h>
@@ -10,13 +10,13 @@
 #include "SPI.h"
 #endif
 #include <Adafruit_TinyUSB.h>
-#include <device_api/device_api.h>
+#include <device_api.h>
 
 #define SYSEX_START	0xF0
 #define SYSEX_END		0xF7
 
 #ifndef BLE_DEVICE_NAME
-#define BLE_DEVICE_NAME "ESP32-MIDI"
+#define BLE_DEVICE_NAME "Spin BLE"
 #endif
 
 // To avoid all MIDI ports have overly large SysEx buffers, Device API is supported only on BLE and USBD
@@ -66,22 +66,33 @@ bool bleAuthenticated = false;
 #ifdef USE_USBD_MIDI
 Adafruit_USBD_MIDI usbd_midi;
 MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usbd_midi, usbdMidi);
-
-//MIDI_NAMESPACE::SerialMIDI<Adafruit_USBD_MIDI> USBDMIDI(usbd_midi);\
-//MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<Adafruit_USBD_MIDI>> usbdMidi((MIDI_NAMESPACE::SerialMIDI<Adafruit_USBD_MIDI>&)USBDMIDI);
-
 #endif
-// USBH
 
+// USBH
+#ifdef USE_USBH_MIDI
+SPIClass * usbhSpi = NULL;
+uint8_t usbhCsPin;
+uint8_t usbhIntPin;
+Adafruit_USBH_Host usbh_midi(usbhSpi, usbhCsPin, usbhIntPin);
+
+void midi_SetUsbHostPins(uint8_t spiInstance, uint8_t csPin, uint8_t intPin)
+{
+	usbhSpi = new SPIClass(spiInstance);
+	usbhCsPin = csPin;
+	usbhIntPin = intPin;
+}
+#endif
 
 // Serial0
 #ifdef USE_SERIAL0_MIDI
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial0, serial0Midi);
 #endif
+
 // Serial1
 #ifdef USE_SERIAL1_MIDI
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, serial1Midi);
 #endif
+
 // Serial2
 #ifdef USE_SERIAL2_MIDI
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial2, serial2Midi);
@@ -156,6 +167,9 @@ void midi_Init()
 #endif
 
 	// USBH
+#ifdef USE_USBH_MIDI
+
+#endif
 
 	// BLE
 #ifdef USE_BLE_MIDI
@@ -220,9 +234,17 @@ void midi_ReadAll()
 #ifdef USE_SERIAL0_MIDI
 	serial0Midi.read();
 #endif
+	// Serial1
+#ifdef USE_SERIAL1_MIDI
+	serial1Midi.read();
+#endif
+	// Serial2
+#ifdef USE_SERIAL2_MIDI
+	serial2Midi.read();
+#endif
 }
 
-// Global MIDI callback assignment
+// Global MIDI callback assignment functions
 void midi_AssignControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value))
 {
 	mControlChangeCallback = callback;
@@ -258,7 +280,7 @@ void midi_SendDeviceApiSysExString(const char* array, unsigned size, uint8_t con
 	usbdMidi.sendSysEx(size, (uint8_t*)array, containsFraming);
 }
 
-// Petal integration specific functions
+// Petal integration specific functions. These are typically called by the Petal execution
 void midi_SendPetalSysEx(const uint8_t* data, size_t size)
 {
 
@@ -275,7 +297,7 @@ void midi_SendPetalProgramChange(uint8_t channel, uint8_t number)
 }
 
 
-//-------------- Local Function Definitions --------------//
+// Process SysEx data received on any interface.
 void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size)
 {
 	// If this is the first SysEx packet received in the reception
@@ -356,6 +378,9 @@ void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size)
 	}
 }
 
+
+
+//-------------- Handle Specific Callback Handlers --------------//
 // USBD
 #ifdef USE_USBD_MIDI
 void usbdMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t value)
@@ -453,6 +478,7 @@ void blueMidi_ProgramChangeCallback(uint8_t channel, uint8_t number)
 
 void blueMidi_SysexCallback(uint8_t * array, unsigned size)
 {
+	processSysEx(MidiBLE, array, size);
 	if (mSystemExclusiveCallback != nullptr)
 	{
 		mSystemExclusiveCallback(MidiBLE, array, size);
@@ -465,11 +491,13 @@ void blueMidi_SysexCallback(uint8_t * array, unsigned size)
 void onConnected()
 {
 	bleConnected = true;
+	Serial.println("BLE connected");
 }
 
 void onDisconnected()
 {
 	bleConnected = false;
+	Serial.println("BLE disconnected");
 }
 #endif
 
