@@ -33,13 +33,10 @@ typedef enum
 	SysExPetal
 } SysExCommandType;
 
-#ifdef USE_USBH_MIDI
-void midi_SetUsbHostPins(uint8_t spiInstance, uint8_t csPin, uint8_t intPin);
-#endif
-
 void midi_Init();
 void midi_ReadAll();
-uint8_t midi_BleConnected();
+//uint8_t midi_BleConnected();
+void turnOffBLE();
 
 void midi_AssignControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value));
 void midi_AssignProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number));

@@ -156,6 +156,7 @@ void midi_Init()
 	usbdMidi.setHandleControlChange(usbdMidi_ControlChangeCallback);
 	usbdMidi.setHandleProgramChange(usbdMidi_ProgramChangeCallback);
 	usbdMidi.setHandleSystemExclusive(usbdMidi_SysexCallback);
+	usbdMidi.begin();
 #endif
 
 	// USBH
@@ -495,6 +496,11 @@ void onDisconnected()
 	bleConnected = false;
 	Serial.println("BLE disconnected");
 }
+
+void turnOffBLE()
+{
+
+}
 #endif
 
 // Serial0
@@ -604,5 +610,7 @@ void serial2Midi_SysexCallback(uint8_t * array, unsigned size)
 #endif
 }
 #endif
+
+
 
 
