@@ -5,8 +5,8 @@
 #include <Adafruit_TinyUSB.h>
 #include "usb_midi_host.h"
 
-
-Adafruit_USBH_Host USBHost(&SPI, 13, 10, 11, 12, 8);
+SPIClass * usbhSpi = NULL;
+Adafruit_USBH_Host usbh_midi(new SPIClass(USBH_SPI), USBH_SPI_SCK_PIN, USBH_SPI_MOSI_PIN, USBH_SPI_MISO_PIN, USBH_CS_PIN, USBH_INT_PIN);
 // Language ID: English
 #define LANGUAGE_ID 0x0409
 
@@ -21,18 +21,20 @@ typedef struct {
 // CFG_TUH_DEVICE_MAX is defined by tusb_config header
 dev_info_t dev_info[CFG_TUH_DEVICE_MAX] = { 0 };
 
-void midih_setup() {
+void midih_Init()
+{
   //Serial.begin(115200);
 
   // init host stack on controller (rhport) 1
-  USBHost.begin(1);
+  usbh_midi.begin(1);
 
 //  while ( !Serial ) delay(10);   // wait for native usb
   Serial.println("TinyUSB Dual: Device Info Example with MAX3421E");
 }
 
-void midih_loop() {
-  USBHost.task();
+void midih_Loop()
+{
+  usbh_midi.task();
   Serial.flush();
 }
 

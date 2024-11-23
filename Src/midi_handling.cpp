@@ -8,6 +8,7 @@
 #endif
 #ifdef USE_USBH_MIDI
 #include "SPI.h"
+#include "usbhost.h"
 #endif
 #include <Adafruit_TinyUSB.h>
 #include <device_api.h>
@@ -70,17 +71,8 @@ MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usbd_midi, usbdMidi);
 
 // USBH
 #ifdef USE_USBH_MIDI
-SPIClass * usbhSpi = NULL;
-uint8_t usbhCsPin;
-uint8_t usbhIntPin;
-Adafruit_USBH_Host usbh_midi(usbhSpi, usbhCsPin, usbhIntPin);
+extern Adafruit_USBH_Host usbh_midi;
 
-void midi_SetUsbHostPins(uint8_t spiInstance, uint8_t csPin, uint8_t intPin)
-{
-	usbhSpi = new SPIClass(spiInstance);
-	usbhCsPin = csPin;
-	usbhIntPin = intPin;
-}
 #endif
 
 // Serial0
@@ -168,7 +160,7 @@ void midi_Init()
 
 	// USBH
 #ifdef USE_USBH_MIDI
-
+	midih_Init();
 #endif
 
 	// BLE
@@ -229,6 +221,10 @@ void midi_ReadAll()
 	// USBD
 #ifdef USE_USBD_MIDI
 	usbdMidi.read();
+#endif
+	// USBH
+#ifdef USE_USBH_MIDI
+	//midih_Loop();
 #endif
 	// Serial0
 #ifdef USE_SERIAL0_MIDI
