@@ -1,5 +1,5 @@
 #include "esp32_def.h"
-#include "midi.h"
+#include "MIDI.h"
 #include "midi_handling.h"
 
 #ifdef USE_BLE_MIDI

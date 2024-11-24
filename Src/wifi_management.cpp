@@ -5,10 +5,10 @@
 
 WiFiManager wifiManager;
 
-bool wifiConnected = false;
+uint8_t wifiConnected = 0;
 
 
-bool wifi_Connect(const char* hostName, const char* apName, const char* apPassword)
+uint8_t wifi_Connect(const char* hostName, const char* apName, const char* apPassword)
 {
 	if(hostName != NULL)
 		WiFi.setHostname(hostName);
@@ -16,14 +16,14 @@ bool wifi_Connect(const char* hostName, const char* apName, const char* apPasswo
 	if (!wifiManager.autoConnect(apName, apPassword))
 	{
 		Serial.println("failed to connect and hit timeout");
-		wifiConnected = false;
+		wifiConnected = 0;
   	}
 	else
 	{
 		Serial.print("WiFi connected! @ ");
 		Serial.println(WiFi.macAddress());
 		ota_Begin();
-		wifiConnected = true;
+		wifiConnected = 1;
 	}
 	return wifiConnected;
 }
@@ -31,4 +31,9 @@ bool wifi_Connect(const char* hostName, const char* apName, const char* apPasswo
 void wifi_Reset()
 {
 	wifiManager.resetSettings();
+}
+
+uint8_t wifi_ConnectionStatus()
+{
+	return wifiConnected;
 }

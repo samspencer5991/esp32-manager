@@ -1,6 +1,6 @@
 #ifndef WIFI_MANAGEMENT_H_
 #define WIFI_MANAGEMENT_H_
 
-bool wifi_Connect(const char* hostName, const char* apName, const char* apPassword);
-
+uint8_t wifi_Connect(const char* hostName, const char* apName, const char* apPassword);
+uint8_t wifi_ConnectionStatus();
 #endif // WIFI_MANAGEMENT_H_

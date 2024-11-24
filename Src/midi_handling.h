@@ -4,7 +4,7 @@
 #define MIDI_HANDLING_H_
 
 #include "stdint.h"
-#include "midi.h"
+#include "MIDI.h"
 
 #define SYSEX_ADDRESS_BYTE1 			0x00
 #define SYSEX_ADDRESS_BYTE2			0x22
@@ -49,7 +49,7 @@ void midi_AssignPetalSysemExclusiveCallback(void (*callback)(MidiInterfaceType i
 void midi_SendDeviceApiSysExString(const char* array, unsigned size, uint8_t containsFraming);
 void midi_SendPetalSysex(const uint8_t* data, unsigned size);
 
-void midih_loop();
-void midih_setup();
+void midih_Loop();
+void midih_Setup();
 
 #endif /* MIDI_HANDLING_H_ */
