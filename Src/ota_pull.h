@@ -50,7 +50,9 @@ private:
 
     int DownloadJson(const char* URL, String& payload)
     {
+			WiFiClientSecure client;
         HTTPClient http;
+		  client.setInsecure();
         http.begin(URL);
 
         // Send HTTP GET request
@@ -195,7 +197,7 @@ public:
             return httpResponseCode > 0 ? httpResponseCode : HTTP_FAILED;
 
         // Deserialize the JSON file downloaded from user's site
-        DynamicJsonDocument doc(6000);
+        JsonDocument doc;
         DeserializationError deserialization = deserializeJson(doc, Payload.c_str());
         if (deserialization != DeserializationError::Ok)
             return JSON_PROBLEM;
