@@ -1,4 +1,4 @@
-#include <WiFiManager.h>
+#include <wifiManager.h>
 #include "WiFi.h"
 #include "ota_updating.h"
 #include "wifi_management.h"
@@ -8,26 +8,29 @@
 WiFiManager wifiManager;
 
 uint8_t wifiConnected = 0;
-
+uint8_t wifiEnabled = 0;
 
 uint8_t wifi_Connect(const char* hostName, const char* apName, const char* apPassword)
 {
-	if(hostName != NULL)
-		WiFi.setHostname(hostName);
+	if(wifiEnabled)
+	{
+		if(hostName != NULL)
+			WiFi.setHostname(hostName);
 
-	WiFi.mode(WIFI_STA);	
-	wifiManager.setConfigPortalTimeout(60);
-	if (!wifiManager.autoConnect(apName, apPassword))
-	{
-		Serial.println("failed to connect and hit timeout");
-		wifiConnected = 0;
-  	}
-	else
-	{
-		Serial.print("WiFi connected! @ ");
-		Serial.println(WiFi.macAddress());
-		ota_Begin();
-		wifiConnected = 1;
+		WiFi.mode(WIFI_STA);	
+		wifiManager.setConfigPortalTimeout(60);
+		if (!wifiManager.autoConnect(apName, apPassword))
+		{
+			Serial.println("failed to connect and hit timeout");
+			wifiConnected = 0;
+		}
+		else
+		{
+			Serial.print("WiFi connected! @ ");
+			Serial.println(WiFi.macAddress());
+			ota_Begin();
+			wifiConnected = 1;
+		}
 	}
 	return wifiConnected;
 }
@@ -35,6 +38,7 @@ uint8_t wifi_Connect(const char* hostName, const char* apName, const char* apPas
 void wifi_TurnOff()
 {
 	WiFi.mode(WIFI_OFF);
+	wifiConnected = 0;
 }
 
 void wifi_ResetSettings()

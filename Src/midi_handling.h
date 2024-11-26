@@ -19,7 +19,7 @@ typedef enum
 	MidiUSBD,
 	MidiUSBH,
 	MidiBLE,
-	MidiWiFi,
+	MidiWiFiRTP,
 	MidiSerial0,
 	MidiSerial1,
 	MidiSerial2,
@@ -39,8 +39,7 @@ void midi_ReadAll();
 void turnOffBLE();
 void turnOnBLE();
 
-uint8_t bleEnabled = 0;
-uint8_t wifiEnabled = 0;
+extern uint8_t bleEnabled;
 
 void midi_AssignControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value));
 void midi_AssignProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number));

@@ -6,6 +6,13 @@
 #include <BLEMIDI_Transport.h>
 #include <hardware/BLEMIDI_ESP32_NimBLE.h>
 #endif
+#ifdef USE_WIFI_RTP_MIDI
+#include <AppleMIDI.h>
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <WiFiUdp.h>
+#include "WiFi_management.h"
+#endif
 #ifdef USE_USBH_MIDI
 #include "SPI.h"
 #include "usbhost.h"
@@ -59,8 +66,17 @@ BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> BL
 MIDI_NAMESPACE::MidiInterface<BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE>,DeviceApiPortSettings> blueMidi((BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> &)BLUEMIDI);
 
 // State variables
+uint8_t bleEnabled = 0;
 bool bleConnected = false;
-bool bleAuthenticated = false;
+#endif
+
+// WiFi Apple/RTP
+#ifdef USE_WIFI_RTP_MIDI
+APPLEMIDI_NAMESPACE::AppleMIDISession<WiFiUDP> RTP(RTP_SESSION_NAME, DEFAULT_CONTROL_PORT); \
+MIDI_NAMESPACE::MidiInterface<APPLEMIDI_NAMESPACE::AppleMIDISession<WiFiUDP>, APPLEMIDI_NAMESPACE::AppleMIDISettings> rtpMidi((APPLEMIDI_NAMESPACE::AppleMIDISession<WiFiUDP> &)RTP);
+
+// State variables
+int rtpIsConnected = 0;
 #endif
 
 // USBD
@@ -119,10 +135,10 @@ void onDisconnected();
 #endif
 
 // WiFi
-#ifdef USE_WIFI_MIDI
-void wifiMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t value);
-void wifiMidi_ProgramChangeCallback(uint8_t channel, uint8_t number);
-void wifiMidi_SysexCallback(uint8_t * array, unsigned size);
+#ifdef USE_WIFI_RTP_MIDI
+void rtpMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t value);
+void rtpMidi_ProgramChangeCallback(uint8_t channel, uint8_t number);
+void rtpMidi_SysexCallback(uint8_t * array, unsigned size);
 #endif
 
 // Serial0
@@ -172,8 +188,26 @@ void midi_Init()
 	BLUEMIDI.setHandleConnected(onConnected);
 	BLUEMIDI.setHandleDisconnected(onDisconnected);
 #endif
-	// WiFi
 
+	// WiFi RTP (Apple MIDI)
+#ifdef USE_WIFI_RTP_MIDI
+	RTP.setHandleConnected([](const APPLEMIDI_NAMESPACE::ssrc_t & ssrc, const char* name) {
+    rtpIsConnected++;
+	 Serial.println("Connected to session");
+    //Serial.printf("Connected to session %s %s", ssrc, name);
+  });
+  RTP.setHandleDisconnected([](const APPLEMIDI_NAMESPACE::ssrc_t & ssrc) {
+    rtpIsConnected--;
+    Serial.printf("Disconnected %s", ssrc);
+  });
+  
+  rtpMidi.setHandleNoteOn([](byte channel, byte note, byte velocity) {
+    Serial.printf("NoteOn %d", note);
+  });
+  rtpMidi.setHandleNoteOff([](byte channel, byte note, byte velocity) {
+    Serial.printf("NoteOff %d", note);
+  });
+#endif
 
 	// Serial0
 #ifdef USE_SERIAL0_MIDI
@@ -199,8 +233,18 @@ void midi_Init()
 	// Begin MIDI interfaces
 	// BLE
 #ifdef USE_BLE_MIDI
-	blueMidi.begin();
+	if(bleEnabled)
+		blueMidi.begin();
 #endif
+	// WiFi RTP
+	if(wifiEnabled)
+	{
+		Serial.print("Add device named Arduino with Host");
+		Serial.println(WiFi.localIP());
+		Serial.println(RTP.getPort());
+		Serial.println(RTP.getName());
+		rtpMidi.begin();
+	}
 	// USBD
 #ifdef USE_USBD_MIDI
 	usbdMidi.begin();
@@ -216,7 +260,13 @@ void midi_ReadAll()
 {
 	// BLE
 #ifdef USE_BLE_MIDI
-	blueMidi.read();
+	if(bleEnabled)
+		blueMidi.read();
+#endif
+	// WiFi RTP
+#ifdef USE_WIFI_RTP_MIDI
+	if(wifiEnabled)
+		rtpMidi.read();
 #endif
 	// USBD
 #ifdef USE_USBD_MIDI
@@ -507,6 +557,43 @@ void turnOffBLE()
 	bleEnabled = 0;
 	BLUEMIDI.end();
 	NimBLEDevice::deinit(true);
+}
+#endif
+
+// WiFi RTP
+#ifdef USE_WIFI_RTP_MIDI
+void rtpMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t value)
+{
+	if (mControlChangeCallback != nullptr)
+	{
+		mControlChangeCallback(MidiWiFiRTP, channel, number, value);
+	}
+#if(CORE_DEBUG_LEVEL >= 4)
+	Serial.printf("WiFi RTP MIDI CC: Ch: %d, Num: %d, Val: %d\n", channel, number, value);
+#endif
+}
+
+void rtpMidi_ProgramChangeCallback(uint8_t channel, uint8_t number)
+{
+	if (mProgramChangeCallback != nullptr)
+	{
+		mProgramChangeCallback(MidiWiFiRTP, channel, number);
+	}
+#if(CORE_DEBUG_LEVEL >= 4)
+	Serial.printf("WiFi RTP MIDI PC: Ch: %d, Num: %d\n", channel, number);
+#endif
+}
+
+void rtpMidi_SysexCallback(uint8_t * array, unsigned size)
+{
+	processSysEx(MidiWiFiRTP, array, size);
+	if (mSystemExclusiveCallback != nullptr)
+	{
+		mSystemExclusiveCallback(MidiWiFiRTP, array, size);
+	}
+#if(CORE_DEBUG_LEVEL >= 4)
+	Serial.printf("WiFi RTP MIDI SysEx: Size: %d\n", size);
+#endif
 }
 #endif
 
