@@ -37,6 +37,10 @@ void midi_Init();
 void midi_ReadAll();
 //uint8_t midi_BleConnected();
 void turnOffBLE();
+void turnOnBLE();
+
+uint8_t bleEnabled = 0;
+uint8_t wifiEnabled = 0;
 
 void midi_AssignControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value));
 void midi_AssignProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number));

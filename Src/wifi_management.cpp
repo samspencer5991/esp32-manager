@@ -32,7 +32,12 @@ uint8_t wifi_Connect(const char* hostName, const char* apName, const char* apPas
 	return wifiConnected;
 }
 
-void wifi_Reset()
+void wifi_TurnOff()
+{
+	WiFi.mode(WIFI_OFF);
+}
+
+void wifi_ResetSettings()
 {
 	wifiManager.resetSettings();
 }

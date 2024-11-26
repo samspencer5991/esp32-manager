@@ -5,5 +5,6 @@ uint8_t wifi_Connect(const char* hostName, const char* apName, const char* apPas
 uint8_t wifi_ConnectionStatus();
 uint8_t wifi_CheckConnectionPing();
 void wifi_Loop();
+void wifi_ResetSettings();
 
 #endif // WIFI_MANAGEMENT_H_

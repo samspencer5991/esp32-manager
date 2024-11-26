@@ -156,7 +156,6 @@ void midi_Init()
 	usbdMidi.setHandleControlChange(usbdMidi_ControlChangeCallback);
 	usbdMidi.setHandleProgramChange(usbdMidi_ProgramChangeCallback);
 	usbdMidi.setHandleSystemExclusive(usbdMidi_SysexCallback);
-	usbdMidi.begin();
 #endif
 
 	// USBH
@@ -497,9 +496,17 @@ void onDisconnected()
 	Serial.println("BLE disconnected");
 }
 
+void turnOnBLE()
+{
+	bleEnabled = 1;
+	blueMidi.begin();
+}
+
 void turnOffBLE()
 {
-
+	bleEnabled = 0;
+	BLUEMIDI.end();
+	NimBLEDevice::deinit(true);
 }
 #endif
 

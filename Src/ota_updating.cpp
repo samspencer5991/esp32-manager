@@ -77,9 +77,10 @@ String ota_GetLatestVersion(String url)
 	if (error)
 		return error.c_str();
 	
-	serializeJsonPretty(doc, Serial);
+	//serializeJsonPretty(doc, Serial);
 
 	const char* version = doc["Configurations"][0]["Version"];
+	
 	return (String)version;
 }
 
