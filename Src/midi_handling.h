@@ -36,10 +36,24 @@ typedef enum
 void midi_Init();
 void midi_ReadAll();
 //uint8_t midi_BleConnected();
+
+
+#ifdef USE_BLE_MIDI
+extern uint8_t bleEnabled;
 void turnOffBLE();
 void turnOnBLE();
+#endif
 
+<<<<<<< Updated upstream
 extern uint8_t bleEnabled;
+=======
+#ifdef USE_WIFI_RTP_MIDI
+extern int rtpIsConnected;
+void turnOnWifiRtp();
+void turnOffWifiRtp();
+void testMidi();
+#endif
+>>>>>>> Stashed changes
 
 void midi_AssignControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value));
 void midi_AssignProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number));
@@ -54,5 +68,5 @@ void midi_SendPetalSysex(const uint8_t* data, unsigned size);
 
 void midih_Loop();
 void midih_Setup();
-
+void testRtpSendNote();
 #endif /* MIDI_HANDLING_H_ */
