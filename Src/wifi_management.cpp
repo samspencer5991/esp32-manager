@@ -1,4 +1,4 @@
-#include <wifiManager.h>
+#include <WiFiManager.h>
 #include "WiFi.h"
 #include "ota_updating.h"
 #include "wifi_management.h"

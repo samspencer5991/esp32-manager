@@ -130,8 +130,8 @@ void blueMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t val
 void blueMidi_ProgramChangeCallback(uint8_t channel, uint8_t number);
 void blueMidi_SysexCallback(uint8_t * array, unsigned size);
 
-void onConnected();
-void onDisconnected();
+void blueMidi_OnConnected();
+void blueMidi_OnDisconnected();
 #endif
 
 // WiFi
@@ -185,8 +185,8 @@ void midi_Init()
 	blueMidi.setHandleProgramChange(blueMidi_ProgramChangeCallback);
 	blueMidi.setHandleSystemExclusive(blueMidi_SysexCallback);
 
-	BLUEMIDI.setHandleConnected(onConnected);
-	BLUEMIDI.setHandleDisconnected(onDisconnected);
+	BLUEMIDI.setHandleConnected(blueMidi_OnConnected);
+	BLUEMIDI.setHandleDisconnected(blueMidi_OnDisconnected);
 #endif
 
 	// WiFi RTP (Apple MIDI)
@@ -237,6 +237,7 @@ void midi_Init()
 		blueMidi.begin();
 #endif
 	// WiFi RTP
+#ifdef USE_WIFI_RTP_MIDI
 	if(wifiEnabled)
 	{
 		Serial.print("Add device named Arduino with Host");
@@ -245,10 +246,11 @@ void midi_Init()
 		Serial.println(RTP.getName());
 		rtpMidi.begin();
 	}
+#endif
 	// USBD
 #ifdef USE_USBD_MIDI
 	usbdMidi.begin();
-	usbdMidi.turnThruOff();
+	//usbdMidi.turnThruOff();
 #endif
 	// Serial0
 #ifdef USE_SERIAL0_MIDI
@@ -323,7 +325,30 @@ void midi_AssignPetalSysemExclusiveCallback(void (*callback)(MidiInterfaceType i
 
 void midi_SendDeviceApiSysExString(const char* array, unsigned size, uint8_t containsFraming)
 {
-	usbdMidi.sendSysEx(size, (uint8_t*)array, containsFraming);
+	
+	if(sysExLastReceptionType == MidiUSBD)
+		usbdMidi.sendSysEx(size, (uint8_t*)array, containsFraming);
+	//if(sysExLastReceptionType == MidiUSBH)
+		//usbdMidi.sendSysEx(size, (uint8_t*)array, containsFraming);
+	else if(sysExLastReceptionType == MidiBLE)
+	{
+		uint8_t testArray[] = {99, 88, 77, 66};
+		blueMidi.sendSysEx(4, (uint8_t*)testArray, 0);
+	}
+#ifdef USE_WIFI_RTP_MIDI
+	else if(sysExLastReceptionType == MidiWiFiRTP)
+	{
+		const char testArray[] = {0xF0, 0x00, 0x22, 0x33, 0x01, 0x02, 0x03, 0x04, 0x05, 0xF7};
+		rtpMidi.sendSysEx(10, (uint8_t*)testArray, 1);
+		rtpMidi.sendSysEx(size, (uint8_t*)array, containsFraming);
+		for(int i=0; i<size; i++)
+		{
+			Serial.printf("%02X ", array[i]);
+		}
+		Serial.println();
+		//usbdMidi.sendSysEx(size, (uint8_t*)array, containsFraming);
+	}
+#endif
 }
 
 // Petal integration specific functions. These are typically called by the Petal execution
@@ -424,6 +449,26 @@ void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size)
 	}
 }
 
+void testMidi()
+{
+	//rtpMidi.read();
+	//midi_ReadAll();
+  // send a note every second
+  // (dont cáll delay(1000) as it will stall the pipeline)
+  //if ((rtpIsConnected > 0) && (millis() - t0) > 1000)
+  if(1)
+  {
+
+    byte note = 45;
+    byte velocity = 55;
+    byte channel = 1;
+		
+    //rtpMidi.sendNoteOn(note, velocity, channel);
+    //rtpMidi.sendNoteOff(note, velocity, channel);
+	 const char testArray[] = {0xF0, 0x00, 0x22, 0x33, 0x01, 0x02, 0x03, 0x04, 0x05, 0xF7};
+	rtpMidi.sendSysEx(10, (uint8_t*)testArray, 1);
+  }
+}
 
 
 //-------------- Handle Specific Callback Handlers --------------//
@@ -455,10 +500,8 @@ void usbdMidi_SysexCallback(uint8_t * array, unsigned size)
 {
 	processSysEx(MidiUSBD, array, size);
 #if(CORE_DEBUG_LEVEL >= 4)
-	Serial.printf("USBD MIDI SysEx: Size: %d\n", size);
+	//Serial.printf("USBD MIDI SysEx: Size: %d\n", size);
 #endif
-	Serial.println(array[0]);
-	Serial.println(array[size-1]);
 }
 #endif
 
@@ -534,13 +577,13 @@ void blueMidi_SysexCallback(uint8_t * array, unsigned size)
 #endif
 }
 
-void onConnected()
+void blueMidi_OnConnected()
 {
 	bleConnected = true;
 	Serial.println("BLE connected");
 }
 
-void onDisconnected()
+void blueMidi_OnDisconnected()
 {
 	bleConnected = false;
 	Serial.println("BLE disconnected");
@@ -704,7 +747,3 @@ void serial2Midi_SysexCallback(uint8_t * array, unsigned size)
 #endif
 }
 #endif
-
-
-
-

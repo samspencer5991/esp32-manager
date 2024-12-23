@@ -5,7 +5,7 @@
 
 #include "midi_handling.h"
 #include "ota_updating.h"
-#include "usbhost.h"
+#include "usb_host.h"
 #include "wifi_management.h"
 
 typedef enum
