@@ -77,10 +77,6 @@ MIDI_NAMESPACE::MidiInterface<APPLEMIDI_NAMESPACE::AppleMIDISession<WiFiUDP>, AP
 
 // State variables
 int rtpIsConnected = 0;
-<<<<<<< Updated upstream
-=======
-unsigned long t0 = millis();
->>>>>>> Stashed changes
 #endif
 
 // USBD
@@ -143,11 +139,6 @@ void blueMidi_OnDisconnected();
 void rtpMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t value);
 void rtpMidi_ProgramChangeCallback(uint8_t channel, uint8_t number);
 void rtpMidi_SysexCallback(uint8_t * array, unsigned size);
-<<<<<<< Updated upstream
-=======
-void rtpMidi_OnConnected(const APPLEMIDI_NAMESPACE::ssrc_t & ssrc, const char* name);
-void rtpMidi_OnDisconnected(const APPLEMIDI_NAMESPACE::ssrc_t & ssrc);
->>>>>>> Stashed changes
 #endif
 
 // Serial0
@@ -200,7 +191,6 @@ void midi_Init()
 
 	// WiFi RTP (Apple MIDI)
 #ifdef USE_WIFI_RTP_MIDI
-<<<<<<< Updated upstream
 	RTP.setHandleConnected([](const APPLEMIDI_NAMESPACE::ssrc_t & ssrc, const char* name) {
     rtpIsConnected++;
 	 Serial.println("Connected to session");
@@ -217,16 +207,6 @@ void midi_Init()
   rtpMidi.setHandleNoteOff([](byte channel, byte note, byte velocity) {
     Serial.printf("NoteOff %d", note);
   });
-=======
-
-	rtpMidi.setHandleControlChange(rtpMidi_ControlChangeCallback);
-	rtpMidi.setHandleProgramChange(rtpMidi_ProgramChangeCallback);
-	rtpMidi.setHandleSystemExclusive(rtpMidi_SysexCallback);
-	RTP.setHandleConnected(rtpMidi_OnConnected);
-	RTP.setHandleDisconnected(rtpMidi_OnDisconnected);
-
-
->>>>>>> Stashed changes
 #endif
 
 	// Serial0
@@ -254,7 +234,6 @@ void midi_Init()
 	// BLE
 #ifdef USE_BLE_MIDI
 	if(bleEnabled)
-<<<<<<< Updated upstream
 		blueMidi.begin();
 #endif
 	// WiFi RTP
@@ -266,18 +245,6 @@ void midi_Init()
 		Serial.println(RTP.getName());
 		rtpMidi.begin();
 	}
-=======
-	{
-		//blueMidi.begin();
-	}
-#endif
-
-	// WiFi RTP
-#ifdef USE_WIFI_RTP_MIDI
-	
-#endif
-
->>>>>>> Stashed changes
 	// USBD
 #ifdef USE_USBD_MIDI
 	usbdMidi.begin();
@@ -487,19 +454,8 @@ void testMidi()
   // send a note every second
   // (dont cáll delay(1000) as it will stall the pipeline)
   //if ((rtpIsConnected > 0) && (millis() - t0) > 1000)
-  if(1)
-  {
-    t0 = millis();
 
-    byte note = 45;
-    byte velocity = 55;
-    byte channel = 1;
-		
-    //rtpMidi.sendNoteOn(note, velocity, channel);
-    //rtpMidi.sendNoteOff(note, velocity, channel);
-	 const char testArray[] = {0xF0, 0x00, 0x22, 0x33, 0x01, 0x02, 0x03, 0x04, 0x05, 0xF7};
-	rtpMidi.sendSysEx(10, (uint8_t*)testArray, 1);
-  }
+  
 }
 
 
@@ -644,11 +600,7 @@ void rtpMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t valu
 		mControlChangeCallback(MidiWiFiRTP, channel, number, value);
 	}
 #if(CORE_DEBUG_LEVEL >= 4)
-<<<<<<< Updated upstream
 	Serial.printf("WiFi RTP MIDI CC: Ch: %d, Num: %d, Val: %d\n", channel, number, value);
-=======
-	//Serial.printf("WiFi RTP MIDI CC: Ch: %d, Num: %d, Val: %d\n", channel, number, value);
->>>>>>> Stashed changes
 #endif
 }
 
@@ -674,61 +626,6 @@ void rtpMidi_SysexCallback(uint8_t * array, unsigned size)
 	Serial.printf("WiFi RTP MIDI SysEx: Size: %d\n", size);
 #endif
 }
-<<<<<<< Updated upstream
-=======
-
-void rtpMidi_OnConnected(const APPLEMIDI_NAMESPACE::ssrc_t & ssrc, const char* name)
-{
-	rtpIsConnected++;
-	//Serial.printf("Connected to session %s %s\n", ssrc, name);
-	Serial.println("Connected to session");
-}
-
-void rtpMidi_OnDisconnected(const APPLEMIDI_NAMESPACE::ssrc_t & ssrc)
-{
-	rtpIsConnected--;
-	//Serial.printf("Disconnected %s\n", ssrc);
-	Serial.println("Disconnected from session");
-}
-
-void turnOnWifiRtp()
-{
-	if(wifiEnabled)
-	{
-		Serial.print("Local IP: ");
-		Serial.println(WiFi.localIP());
-		Serial.print("RTP Port: ");
-		Serial.println(RTP.getPort());
-		Serial.print("RTP Name: ");
-		Serial.println(RTP.getName());
-
-		rtpMidi.begin();
-
-		RTP.setHandleConnected([](const APPLEMIDI_NAMESPACE::ssrc_t & ssrc, const char* name) {
-		rtpIsConnected++;
-		AM_DBG(F("Connected to session"), ssrc, name);
-		});
-		RTP.setHandleDisconnected([](const APPLEMIDI_NAMESPACE::ssrc_t & ssrc) {
-			rtpIsConnected--;
-			AM_DBG(F("Disconnected"), ssrc);
-		});
-
-		rtpMidi.setHandleNoteOn([](byte channel, byte note, byte velocity) {
-			AM_DBG(F("NoteOn"), note);
-		});
-		rtpMidi.setHandleNoteOff([](byte channel, byte note, byte velocity) {
-			AM_DBG(F("NoteOff"), note);
-		});
-	}
-	
-}
-
-void turnOffWifiRtp()
-{
-	
-}
-
->>>>>>> Stashed changes
 #endif
 
 // Serial0
