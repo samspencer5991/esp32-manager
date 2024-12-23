@@ -44,6 +44,16 @@ void turnOffBLE();
 void turnOnBLE();
 #endif
 
+<<<<<<< Updated upstream
+extern uint8_t bleEnabled;
+=======
+#ifdef USE_WIFI_RTP_MIDI
+extern int rtpIsConnected;
+void turnOnWifiRtp();
+void turnOffWifiRtp();
+void testMidi();
+#endif
+>>>>>>> Stashed changes
 
 void midi_AssignControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value));
 void midi_AssignProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number));
