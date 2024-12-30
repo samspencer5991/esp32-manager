@@ -176,7 +176,7 @@ void midi_Init()
 
 	// USBH
 #ifdef USE_USBH_MIDI
-	midih_Init();
+	//midih_Init();
 #endif
 
 	// BLE

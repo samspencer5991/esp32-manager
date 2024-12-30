@@ -1,6 +1,7 @@
 #include "usb_host.h"
 
 #ifdef USE_EXTERNAL_USB_HOST
+
 #include "SPI.h"
 
 #include "usb_midi_host.h"
@@ -34,7 +35,7 @@ void usbh_Init()
 
 void usbh_Process()
 {
-	USBHost.task();
+	USBHost.task(0);
 }
 
 void usbh_PrintDeviceDescriptor(dev_info_t *dev, uint8_t daddr)
@@ -210,11 +211,12 @@ void parse_config_descriptor(uint8_t dev_addr, tusb_desc_configuration_t const *
 		if (drv_len < sizeof(tusb_desc_interface_t))
 			return;
 
-		// only open and listen to HID endpoint IN
+		// Handle CDC devices
 		if (desc_itf->bInterfaceClass == TUSB_CLASS_CDC)
 		{
-			cdcDeviceInitRequired = 1;
-			tonexOne_SendHello();
+			cdc_DeviceConfiguredHandler();
+			//cdcDeviceInitRequired = 1;
+			//tonexOne_SendHello();
 		}
 
 		// next Interface or IAD descriptor

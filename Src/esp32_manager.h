@@ -29,4 +29,7 @@ typedef struct
 
 extern Esp32Config* esp32Config;	// Pointer to the config structure of the application
 
+void esp32Manager_Init();
+void esp32Manager_Process();
+
 #endif // ESP32_HANDLER_H_

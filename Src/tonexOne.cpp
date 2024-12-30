@@ -1,3 +1,5 @@
+#ifdef USE_EXTERNAL_USB_HOST
+
 #include "tonexone.h"
 #include "esp_log.h"
 #include "Arduino.h"
@@ -7,7 +9,6 @@ static const char *TAG = "tonexOne";
 #define FRAMING_BYTE 0x7E
 #define MAX_RAW_DATA 4096
 #define RX_BUFFER_SIZE 4096
-#define PACKET_TIMEOUT 1000
 #define MAX_PRESETS 20
 #define TONEX_ONE_RESP_OFFSET_PRESET_NAME_LEN 32
 
@@ -80,7 +81,7 @@ typedef struct
 esp_err_t tonexOne_RequestState(void);
 esp_err_t tonexOne_SetActiveSlot(Slot newSlot);
 uint16_t tonexOne_GetCurrentActivePreset(void);
-static esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t selectSlot);
+esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t selectSlot);
 
 ParsingStatus tonexOne_ParsePacket(uint8_t *message, uint16_t inlength);
 uint16_t tonexOne_ParseValue(uint8_t *message, uint8_t *index);
@@ -108,7 +109,7 @@ static const uint8_t presetByteMarker[] = {0xB9, 0x04, 0xB9, 0x02, 0xBC, 0x21};
 void tonexOne_SendHello()
 {
 	static uint8_t framedBuffer[3072];
-	uint16_t outlength;
+	uint16_t outLength;
 	ESP_LOGI(TAG, "Sent: Hello Packet");
 
 	// build message
@@ -122,8 +123,10 @@ void tonexOne_SendHello()
 								0x02,
 								0x0b};
 	// add framing
-	outlength = tonexOne_AddFraming(request, sizeof(request), framedBuffer);
-	SerialHost.write(framedBuffer, sizeof(framedBuffer));
+	outLength = tonexOne_AddFraming(request, sizeof(request), framedBuffer);
+
+	SerialHost.write(framedBuffer, outLength);
+	SerialHost.flush();
 	tonexData.tonexState = CommsStateHello;
 }
 
@@ -135,7 +138,7 @@ void tonexOne_HandleReceivedData(char *rxData, uint16_t len)
 	{
 		// Reset the buffer index and ignore the incoming data
 		receivedByteIndex = 0;
-		ESP_LOGE(TAG, "Buffer overflow on incoming CDC data: %d bytes overflow.",
+		ESP_LOGD(TAG, "Buffer overflow on incoming CDC data: %d bytes overflow.",
 					RX_BUFFER_SIZE - (receivedByteIndex + len));
 	}
 	// Copy the received data into the raw rx buffer
@@ -145,7 +148,7 @@ void tonexOne_HandleReceivedData(char *rxData, uint16_t len)
 	// Check if a complete message has been received yet
 	if ((receivedByteIndex >= 2) && (tonexOneRawRxData[0] == FRAMING_BYTE) && (tonexOneRawRxData[receivedByteIndex - 1] == FRAMING_BYTE))
 	{
-		ESP_LOGE(TAG, "Got new packet of length: %d", receivedByteIndex);
+		ESP_LOGD(TAG, "Got new packet of length: %d", receivedByteIndex);
 		newDataReception = 1;
 		rxDataSize = receivedByteIndex;
 		receivedByteIndex = 0;
@@ -154,7 +157,7 @@ void tonexOne_HandleReceivedData(char *rxData, uint16_t len)
 	// If not, keep waiting for more data
 	else
 	{
-		ESP_LOGW(TAG, "Missing start or end bytes. Len:%d Start:%X End:%X", len, rxData[0], rxData[len - 1]);
+		ESP_LOGD(TAG, "Missing start or end bytes. Len:%d Start:%X End:%X", len, rxData[0], rxData[len - 1]);
 	}
 }
 
@@ -169,7 +172,7 @@ void tonexOne_Process()
 		ParsingStatus status = tonexOne_ParsePacket((uint8_t *)tonexOneRawRxData, rxDataSize);
 		if (status != ParsingOk)
 		{
-			ESP_LOGE(TAG, "Error parsing message: %d", (int)status);
+			ESP_LOGD(TAG, "Error parsing message: %d", (int)status);
 		}
 		else
 		{
@@ -256,28 +259,44 @@ void tonexOne_SendGoToPreset(uint8_t presetNum)
 
 void tonexOne_SendNextPreset()
 {
-	tonexOne_SetPresetInSlot(tonexData.message.slotCPreset + 1, SlotC, 1);
+	// Check for preset boundries
+	if(tonexData.message.slotCPreset >= MAX_PRESETS-1)
+	{
+		tonexOne_SetPresetInSlot(0, SlotC, 1);
+	}
+	else
+	{
+		tonexOne_SetPresetInSlot(tonexData.message.slotCPreset + 1, SlotC, 1);
+	}
 }
 
 void tonexOne_SendPreviousPreset()
 {
-	tonexOne_SetPresetInSlot(tonexData.message.slotCPreset - 1, SlotC, 1);
+	if(tonexData.message.slotCPreset == 0 || tonexData.message.slotCPreset >= MAX_PRESETS)
+	{
+		tonexOne_SetPresetInSlot(MAX_PRESETS - 1, SlotC, 1);
+	}
+	else
+	{
+		tonexOne_SetPresetInSlot(tonexData.message.slotCPreset - 1, SlotC, 1);
+	}
 }
 
 //---------------------- Private Functions ----------------------//
 esp_err_t tonexOne_RequestState(void)
 {
-	uint16_t outlength;
+	uint16_t outLength;
 
 	// build message
 	uint8_t request[] = {0xb9, 0x03, 0x00, 0x82, 0x06, 0x00, 0x80, 0x0b, 0x03, 0xb9, 0x02, 0x81, 0x06, 0x03, 0x0b};
 
 	// add framing
-	outlength = tonexOne_AddFraming(request, sizeof(request), framedBuffer);
+	outLength = tonexOne_AddFraming(request, sizeof(request), framedBuffer);
 
 	// send it
-	SerialHost.write(framedBuffer, sizeof(framedBuffer));
-	ESP_LOGE(TAG, "Sent: Request State\n");
+	ESP_LOGD(TAG, "Sent: Request State\n");
+	SerialHost.write(framedBuffer, outLength);
+	SerialHost.flush();
 	return 0;
 	// return usb_tonex_one_transmit(FramedBuffer, outlength);
 }
@@ -314,8 +333,9 @@ esp_err_t tonexOne_SetActiveSlot(Slot newSlot)
 	framedLength = tonexOne_AddFraming(txBuffer, sizeof(message) + tonexData.message.pedalData.length, framedBuffer);
 
 	// send it
-	//ESP_LOGE(TAG, "Sent: Set Active Slot: %d\n", newSlot);
+	ESP_LOGD(TAG, "Sent: Set Active Slot: %d\n", newSlot);
 	SerialHost.write(framedBuffer, framedLength);
+	SerialHost.flush();
 	return 0;
 	// return usb_tonex_one_transmit(framedBuffer, framedLength);
 }
@@ -349,7 +369,7 @@ uint16_t tonexOne_GetCurrentActivePreset(void)
 	return result;
 }
 
-static esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t selectSlot)
+esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t selectSlot)
 {
 	uint16_t framedLength;
 
@@ -431,7 +451,7 @@ static esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t
 	}
 
 	// ESP_LOGI(TAG, "State Data after changes");
-	// ESP_LOG_BUFFER_HEXDUMP(TAG, TonexData.Message.PedalData.RawData, TonexData.Message.PedalData.Length, ESP_LOG_INFO);
+	// ESP_LOGD_BUFFER_HEXDUMP(TAG, TonexData.Message.PedalData.RawData, TonexData.Message.PedalData.Length, ESP_LOGD_INFO);
 
 	// build total message
 	memcpy((void *)txBuffer, (void *)message, sizeof(message));
@@ -441,8 +461,12 @@ static esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t
 	framedLength = tonexOne_AddFraming(txBuffer, sizeof(message) + tonexData.message.pedalData.length, framedBuffer);
 
 	// send it
-	SerialHost.write(framedBuffer, sizeof(framedBuffer));
-	return 1;
+	//Serial0.println(framedLength);
+	cdc_Transmit(framedBuffer, framedLength);
+	//SerialHost.write(framedBuffer, framedLength);
+	//SerialHost.flush();
+	//Serial0.println("Written");
+	return 0;
 	// return usb_tonex_one_transmit(framedBuffer, framedLength);
 }
 
@@ -462,19 +486,19 @@ ParsingStatus tonexOne_ParsePacket(uint8_t *message, uint16_t inlength)
 
 	if (status != ParsingOk)
 	{
-		ESP_LOGE(TAG, "Remove framing failed");
+		ESP_LOGD(TAG, "Remove framing failed");
 		return ParsingInvalidFrame;
 	}
 
 	if (out_len < 5)
 	{
-		ESP_LOGE(TAG, "Message too short");
+		ESP_LOGD(TAG, "Message too short");
 		return ParsingInvalidFrame;
 	}
 
 	if ((framedBuffer[0] != 0xB9) || (framedBuffer[1] != 0x03))
 	{
-		ESP_LOGE(TAG, "Invalid header");
+		ESP_LOGD(TAG, "Invalid header");
 		return ParsingInvalidFrame;
 	}
 
@@ -512,7 +536,7 @@ ParsingStatus tonexOne_ParsePacket(uint8_t *message, uint16_t inlength)
 
 	if ((out_len - index) != header.size)
 	{
-		ESP_LOGE(TAG, "Invalid message size");
+		ESP_LOGD(TAG, "Invalid message size");
 		return ParsingInvalidFrame;
 	}
 
@@ -587,7 +611,7 @@ ParsingStatus tonexOne_ParseState(uint8_t *unframed, uint16_t length, uint16_t i
 	ESP_LOGI(TAG, "Slot A: %d. Slot B:%d. Slot C:%d. Current slot: %d", (int)tonexData.message.slotAPreset, (int)tonexData.message.slotBPreset, (int)tonexData.message.slotCPreset, (int)tonexData.message.currentSlot);
 
 	// ESP_LOGI(TAG, "State Data Rx: %d %d", (int)length, (int)index);
-	// ESP_LOG_BUFFER_HEXDUMP(TAG, tonexData.message.PedalData.RawData, tonexData.message.PedalData.Length, ESP_LOG_INFO);
+	// ESP_LOGD_BUFFER_HEXDUMP(TAG, tonexData.message.PedalData.RawData, tonexData.message.PedalData.Length, ESP_LOGD_INFO);
 
 	return ParsingOk;
 }
@@ -670,7 +694,7 @@ ParsingStatus tonexOne_RemoveFraming(uint8_t *input, uint16_t inlength, uint8_t 
 
 	if ((inlength < 4) || (input[0] != 0x7E) || (input[inlength - 1] != 0x7E))
 	{
-		ESP_LOGE(TAG, "Invalid Frame (1)");
+		ESP_LOGD(TAG, "Invalid Frame (1)");
 		return ParsingInvalidFrame;
 	}
 
@@ -680,7 +704,7 @@ ParsingStatus tonexOne_RemoveFraming(uint8_t *input, uint16_t inlength, uint8_t 
 		{
 			if ((i + 1) >= (inlength - 1))
 			{
-				ESP_LOGE(TAG, "Invalid Escape sequence");
+				ESP_LOGD(TAG, "Invalid Escape sequence");
 				return ParsingInvalidEscapeSequence;
 			}
 
@@ -703,14 +727,14 @@ ParsingStatus tonexOne_RemoveFraming(uint8_t *input, uint16_t inlength, uint8_t 
 
 	if (*outlength < 2)
 	{
-		ESP_LOGE(TAG, "Invalid Frame (2)");
+		ESP_LOGD(TAG, "Invalid Frame (2)");
 		return ParsingInvalidFrame;
 	}
 
 	// ESP_LOGI(TAG, "In:");
-	// ESP_LOG_BUFFER_HEXDUMP(TAG, input, inlength, ESP_LOG_INFO);
+	// ESP_LOGD_BUFFER_HEXDUMP(TAG, input, inlength, ESP_LOGD_INFO);
 	// ESP_LOGI(TAG, "Out:");
-	// ESP_LOG_BUFFER_HEXDUMP(TAG, output, *outlength, ESP_LOG_INFO);
+	// ESP_LOGD_BUFFER_HEXDUMP(TAG, output, *outlength, ESP_LOGD_INFO);
 
 	uint16_t received_crc = (output[(*outlength) - 1] << 8) | output[(*outlength) - 2];
 	(*outlength) -= 2;
@@ -719,9 +743,11 @@ ParsingStatus tonexOne_RemoveFraming(uint8_t *input, uint16_t inlength, uint8_t 
 
 	if (received_crc != calculated_crc)
 	{
-		ESP_LOGE(TAG, "Crc mismatch: %X, %X", (int)received_crc, (int)calculated_crc);
+		ESP_LOGD(TAG, "Crc mismatch: %X, %X", (int)received_crc, (int)calculated_crc);
 		return ParsingCRCError;
 	}
 
 	return ParsingOk;
 }
+
+#endif
