@@ -1,3 +1,4 @@
+#include "Arduino.h"
 #include "esp32_def.h"
 #include "MIDI.h"
 #include "midi_handling.h"
@@ -13,8 +14,10 @@
 #include <WiFiUdp.h>
 #include "WiFi_management.h"
 #endif
-#ifdef USE_USBH_MIDI
+
 #include "SPI.h"
+#ifdef USE_USBH_MIDI
+
 #include "usbhost.h"
 #endif
 #include <Adafruit_TinyUSB.h>
