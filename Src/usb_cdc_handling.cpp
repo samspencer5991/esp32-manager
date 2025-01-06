@@ -7,12 +7,7 @@
 
 #include "tonexOne.h"
 
-typedef enum
-{
-	CDCDeviceNone = 0,
-	CDCDeviceTonexOne = 1,
-	CDCDeviceUnknown = 2,
-} CDCDeviceType;
+
 
 Adafruit_USBH_CDC SerialHost;
 

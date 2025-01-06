@@ -108,6 +108,11 @@ static const uint8_t presetByteMarker[] = {0xB9, 0x04, 0xB9, 0x02, 0xBC, 0x21};
 //---------------------- Public Functions ----------------------//
 void tonexOne_SendHello()
 {
+	if(!cdcDeviceMounted || cdcDeviceType != CDCDeviceTonexOne)
+	{
+		ESP_LOGE(TAG, "No Tonex One device mounted.");
+		return;
+	}
 	static uint8_t framedBuffer[3072];
 	uint16_t outLength;
 	ESP_LOGI(TAG, "Sent: Hello Packet");
@@ -285,6 +290,11 @@ void tonexOne_SendPreviousPreset()
 //---------------------- Private Functions ----------------------//
 esp_err_t tonexOne_RequestState(void)
 {
+	if(!cdcDeviceMounted || cdcDeviceType != CDCDeviceTonexOne)
+	{
+		ESP_LOGE(TAG, "No Tonex One device mounted.");
+		return ESP_FAIL;
+	}
 	uint16_t outLength;
 
 	// build message
@@ -303,6 +313,11 @@ esp_err_t tonexOne_RequestState(void)
 
 esp_err_t tonexOne_SetActiveSlot(Slot newSlot)
 {
+	if(!cdcDeviceMounted || cdcDeviceType != CDCDeviceTonexOne)
+	{
+		ESP_LOGE(TAG, "No Tonex One device mounted.");
+		return ESP_FAIL;
+	}
 	uint16_t framedLength;
 
 	ESP_LOGI(TAG, "Setting slot %d", (int)newSlot);
@@ -371,6 +386,11 @@ uint16_t tonexOne_GetCurrentActivePreset(void)
 
 esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t selectSlot)
 {
+	if(!cdcDeviceMounted || cdcDeviceType != CDCDeviceTonexOne)
+	{
+		ESP_LOGE(TAG, "No Tonex One device mounted.");
+		return ESP_FAIL;
+	}
 	uint16_t framedLength;
 
 	// firmware v1.1.4: offset needed is 12
@@ -461,13 +481,9 @@ esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t select
 	framedLength = tonexOne_AddFraming(txBuffer, sizeof(message) + tonexData.message.pedalData.length, framedBuffer);
 
 	// send it
-	//Serial0.println(framedLength);
 	cdc_Transmit(framedBuffer, framedLength);
-	//SerialHost.write(framedBuffer, framedLength);
-	//SerialHost.flush();
-	//Serial0.println("Written");
+
 	return 0;
-	// return usb_tonex_one_transmit(framedBuffer, framedLength);
 }
 
 ParsingStatus tonexOne_ParsePacket(uint8_t *message, uint16_t inlength)

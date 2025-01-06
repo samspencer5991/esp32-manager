@@ -50,7 +50,8 @@ String ota_GetLatestVersion(String url)
 	WiFiClientSecure client;
 	HTTPClient http;
 	String response;
-	client.setInsecure();
+	//client.setInsecure();
+	
 	http.begin(client, url);  // Specify the URL
 	int httpCode = http.GET();  // Send the GET request
 

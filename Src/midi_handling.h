@@ -34,6 +34,7 @@ typedef enum
 } SysExCommandType;
 
 void midi_Init();
+void midi_InitWiFiRTP();
 void midi_ReadAll();
 //uint8_t midi_BleConnected();
 

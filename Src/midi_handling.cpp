@@ -27,8 +27,10 @@
 #define SYSEX_END		0xF7
 
 #ifndef BLE_DEVICE_NAME
-#define BLE_DEVICE_NAME "Spin BLE"
+#define BLE_DEVICE_NAME "Pirate MIDI BLE"
 #endif
+
+const char* TAG = "MIDI";
 
 // To avoid all MIDI ports have overly large SysEx buffers, Device API is supported only on BLE and USBD
 struct DeviceApiPortSettings : public MIDI_NAMESPACE::DefaultSettings
@@ -234,30 +236,52 @@ void midi_Init()
 #endif
 
 	// Begin MIDI interfaces
+		// USBD
+#ifdef USE_USBD_MIDI
+	ESP_LOGV(TAG, "Starting USBD MIDI");
+	usbdMidi.begin(MIDI_CHANNEL_OMNI);
+	usbdMidi.turnThruOff();
+#endif
 	// BLE
 #ifdef USE_BLE_MIDI
 	if(bleEnabled)
-		blueMidi.begin();
+		blueMidi.begin(MIDI_CHANNEL_OMNI);
 #endif
 	// WiFi RTP
+	/*
 	if(wifiEnabled)
 	{
-		Serial.print("Add device named Arduino with Host");
+		Serial.print("Add device named Arduino with Host: ");
 		Serial.println(WiFi.localIP());
 		Serial.println(RTP.getPort());
 		Serial.println(RTP.getName());
 		rtpMidi.begin();
 	}
-	// USBD
-#ifdef USE_USBD_MIDI
-	usbdMidi.begin();
-	//usbdMidi.turnThruOff();
-#endif
+	*/
+
 	// Serial0
 #ifdef USE_SERIAL0_MIDI
-	serial0Midi.begin();
+	serial0Midi.begin(MIDI_CHANNEL_OMNI);
 #endif
 }
+
+// WiFi RTP must be initialised after WiFi is connected
+void midi_InitWiFiRTP()
+{
+	if(wifiEnabled && wifiConnected)
+	{
+		Serial.print("Add device named Arduino with Host: ");
+		Serial.println(WiFi.localIP());
+		Serial.println(RTP.getPort());
+		Serial.println(RTP.getName());
+		rtpMidi.begin(MIDI_CHANNEL_OMNI);
+	}
+	else
+	{
+		Serial.println("WiFi not connected, cannot start RTP MIDI");
+	}
+}
+
 
 void midi_ReadAll()
 {
@@ -326,16 +350,22 @@ void midi_AssignPetalSysemExclusiveCallback(void (*callback)(MidiInterfaceType i
 
 void midi_SendDeviceApiSysExString(const char* array, unsigned size, uint8_t containsFraming)
 {
-	
+#ifdef USE_USBD_MIDI
 	if(sysExLastReceptionType == MidiUSBD)
-		usbdMidi.sendSysEx(size, (uint8_t*)array, containsFraming);
-	//if(sysExLastReceptionType == MidiUSBH)
-		//usbdMidi.sendSysEx(size, (uint8_t*)array, containsFraming);
-	else if(sysExLastReceptionType == MidiBLE)
 	{
-		uint8_t testArray[] = {99, 88, 77, 66};
-		blueMidi.sendSysEx(4, (uint8_t*)testArray, 0);
+		usbdMidi.sendSysEx(size, (uint8_t*)array, containsFraming);
+		return;
 	}
+#endif
+
+#ifdef USE_BLE_MIDI
+	if(sysExLastReceptionType == MidiBLE)
+	{
+		blueMidi.sendSysEx(size, (uint8_t*)array, containsFraming);
+		return;
+	}
+#endif
+
 #ifdef USE_WIFI_RTP_MIDI
 	else if(sysExLastReceptionType == MidiWiFiRTP)
 	{
@@ -462,7 +492,7 @@ void testMidi()
 }
 
 
-//-------------- Handle Specific Callback Handlers --------------//
+//-------------- Handle Specific Functions --------------//
 // USBD
 #ifdef USE_USBD_MIDI
 void usbdMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t value)

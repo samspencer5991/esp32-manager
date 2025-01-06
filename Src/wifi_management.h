@@ -10,5 +10,6 @@ void wifi_Loop();
 void wifi_ResetSettings();
 
 extern uint8_t wifiEnabled;
+extern uint8_t wifiConnected;
 
 #endif // WIFI_MANAGEMENT_H_
