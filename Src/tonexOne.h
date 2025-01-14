@@ -9,7 +9,7 @@
 
 
 // MIDI Mapping
-#define TONEX_ONE_MIDI_CHANNEL 9
+#define TONEX_ONE_DEFAULT_MIDI_CHANNEL 9
 
 // Tonex One Commands
 #define TONEX_ONE_PREVIOUS_PRESET_CC	32

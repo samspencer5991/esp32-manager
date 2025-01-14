@@ -1,11 +1,12 @@
 #include "Arduino.h"
-#include "esp32_def.h"
+#include "esp32_manager.h"
 #include "MIDI.h"
 #include "midi_handling.h"
 
 #ifdef USE_BLE_MIDI
 #include <BLEMIDI_Transport.h>
 #include <hardware/BLEMIDI_ESP32_NimBLE.h>
+#include <hardware/BLEMIDI_Client_ESP32.h>
 #endif
 #ifdef USE_WIFI_RTP_MIDI
 #include <AppleMIDI.h>
@@ -28,6 +29,13 @@
 
 #ifndef BLE_DEVICE_NAME
 #define BLE_DEVICE_NAME "Pirate MIDI BLE"
+<<<<<<< Updated upstream
+=======
+#endif
+
+#ifndef BLE_CLIENT_DEVICE_NAME
+#define BLE_CLIENT_DEVICE_NAME "Pirate MIDI BLE Client"
+>>>>>>> Stashed changes
 #endif
 
 const char* TAG = "MIDI";
@@ -69,6 +77,10 @@ void (*mPetalProgramChangeCallback)(MidiInterfaceType interface, uint8_t channel
 #ifdef USE_BLE_MIDI
 BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> BLUEMIDI(BLE_DEVICE_NAME); \
 MIDI_NAMESPACE::MidiInterface<BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE>,DeviceApiPortSettings> blueMidi((BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> &)BLUEMIDI);
+
+BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_Client_ESP32> BLUEMIDICLIENT(BLE_CLIENT_DEVICE_NAME); \
+MIDI_NAMESPACE::MidiInterface<BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_Client_ESP32>, BLEMIDI_NAMESPACE::MySettings> blueMidiClient((BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_Client_ESP32> &)BLUEMIDICLIENT);
+
 
 // State variables
 uint8_t bleEnabled = 0;
@@ -609,19 +621,6 @@ void blueMidi_OnDisconnected()
 	bleConnected = false;
 	Serial.println("BLE disconnected");
 }
-
-void turnOnBLE()
-{
-	bleEnabled = 1;
-	blueMidi.begin();
-}
-
-void turnOffBLE()
-{
-	bleEnabled = 0;
-	BLUEMIDI.end();
-	NimBLEDevice::deinit(true);
-}
 #endif
 
 // WiFi RTP
@@ -766,5 +765,35 @@ void serial2Midi_SysexCallback(uint8_t * array, unsigned size)
 #if(CORE_DEBUG_LEVEL >= 4)
 	Serial.printf("Serial2 MIDI SysEx: Size: %d\n", size);
 #endif
+}
+#endif
+
+
+//-------------------- BLE Management --------------------//
+#ifdef USE_BLE_MIDI
+void ReadCB(void *parameter)
+{
+//  Serial.print("READ Task is started on core: ");
+//  Serial.println(xPortGetCoreID());
+  while(1)
+  {
+    blueMidiClient.read(); 
+    vTaskDelay(1 / portTICK_PERIOD_MS); //Feed the watchdog of FreeRTOS.
+    //Serial.println(uxTaskGetStackHighWaterMark(NULL)); //Only for debug. You can see the watermark of the free resources assigned by the xTaskCreatePinnedToCore() function.
+  }
+  vTaskDelay(1);
+}
+
+void turnOnBLE()
+{
+	bleEnabled = 1;
+	blueMidi.begin();
+}
+
+void turnOffBLE()
+{
+	bleEnabled = 0;
+	BLUEMIDI.end();
+	NimBLEDevice::deinit(true);
 }
 #endif
