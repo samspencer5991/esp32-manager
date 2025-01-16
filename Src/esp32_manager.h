@@ -3,10 +3,10 @@
 #ifndef ESP32_HANDLER_H_
 #define ESP32_HANDLER_H_
 
-#include "midi_handling.h"
-#include "ota_updating.h"
-#include "usb_host.h"
-#include "wifi_management.h"
+//#include "midi_handling.h"
+//#include "ota_updating.h"
+//#include "usb_host.h"
+//#include "wifi_management.h"
 
 typedef enum
 {
