@@ -29,13 +29,6 @@
 
 #ifndef BLE_DEVICE_NAME
 #define BLE_DEVICE_NAME "Pirate MIDI BLE"
-<<<<<<< Updated upstream
-=======
-#endif
-
-#ifndef BLE_CLIENT_DEVICE_NAME
-#define BLE_CLIENT_DEVICE_NAME "Pirate MIDI BLE Client"
->>>>>>> Stashed changes
 #endif
 
 const char* TAG = "MIDI";
@@ -256,41 +249,41 @@ void midi_Init()
 #endif
 	// BLE
 #ifdef USE_BLE_MIDI
-	if(bleEnabled)
+	if(esp32ConfigPtr->wirelessType == Esp32BLE)
 		blueMidi.begin(MIDI_CHANNEL_OMNI);
 #endif
-	// WiFi RTP
-	/*
-	if(wifiEnabled)
-	{
-		Serial.print("Add device named Arduino with Host: ");
-		Serial.println(WiFi.localIP());
-		Serial.println(RTP.getPort());
-		Serial.println(RTP.getName());
-		rtpMidi.begin();
-	}
-	*/
-
 	// Serial0
 #ifdef USE_SERIAL0_MIDI
 	serial0Midi.begin(MIDI_CHANNEL_OMNI);
+#endif
+	// Serial1
+#ifdef USE_SERIAL1_MIDI
+	serial1Midi.begin(MIDI_CHANNEL_OMNI);
 #endif
 }
 
 // WiFi RTP must be initialised after WiFi is connected
 void midi_InitWiFiRTP()
 {
-	if(wifiEnabled && wifiConnected)
+	if(esp32ConfigPtr->wirelessType != Esp32WiFi)
 	{
-		Serial.print("Add device named Arduino with Host: ");
-		Serial.println(WiFi.localIP());
-		Serial.println(RTP.getPort());
-		Serial.println(RTP.getName());
-		rtpMidi.begin(MIDI_CHANNEL_OMNI);
+		ESP_LOGI(TAG, "WiFi not enabled, cannot start RTP MIDI");
+		return;
 	}
 	else
 	{
-		Serial.println("WiFi not connected, cannot start RTP MIDI");
+		if(wifiConnected)
+		{
+			Serial.print("Add device named Arduino with Host: ");
+			Serial.println(WiFi.localIP());
+			Serial.println(RTP.getPort());
+			Serial.println(RTP.getName());
+			rtpMidi.begin(MIDI_CHANNEL_OMNI);
+		}
+		else
+		{
+			Serial.println("WiFi not connected, cannot start RTP MIDI");
+		}
 	}
 }
 

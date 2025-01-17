@@ -13,11 +13,11 @@ void esp32Manager_Init()
 {
 	midi_Init();
 
-	wifi_Connect(WIFI_HOSTNAME, WIFI_AP_SSID, NULL);
-
-	midi_InitWiFiRTP();
-
-	
+	if(esp32ConfigPtr->wirelessType == Esp32WiFi)
+	{
+		wifi_Connect(WIFI_HOSTNAME, WIFI_AP_SSID, NULL);
+		midi_InitWiFiRTP();
+	}
 
 	// Initialise USB host components
 #ifdef USE_EXTERNAL_USB_HOST

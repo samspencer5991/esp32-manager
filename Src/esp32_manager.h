@@ -29,7 +29,7 @@ typedef enum
 
 typedef struct
 {
-	Esp32WirelessType WirelessType;	// What type of wireless connection should be used
+	Esp32WirelessType wirelessType;	// What type of wireless connection should be used
 	Esp32WiFiMode WiFiMode;				// Access point or connected device behaviour by default
 	Esp32BLEMode BLEMode;				// Client or server behaviour for BLE
 } Esp32ManagerConfig;

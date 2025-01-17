@@ -9,6 +9,8 @@ uint8_t wifi_CheckConnectionPing();
 void wifi_Loop();
 void wifi_ResetSettings();
 
+//__weak void wifi_ConnectedCallback
+
 extern uint8_t wifiEnabled;
 extern uint8_t wifiConnected;
 
