@@ -8,6 +8,8 @@
 #include "usb_cdc_handling.h"
 #endif
 
+Esp32ManagerConfig* esp32ConfigPtr;
+
 // Initialise all included components
 void esp32Manager_Init()
 {

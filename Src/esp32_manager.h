@@ -27,11 +27,19 @@ typedef enum
 	Esp32BLEClient
 } Esp32BLEMode;
 
+typedef enum
+{
+	Esp32BLEClientAll,
+	Esp32BLEClientInclusion,
+	Esp32BLEClientExclusion
+} ESP32BLEClientFilter;
+
 typedef struct
 {
-	Esp32WirelessType wirelessType;	// What type of wireless connection should be used
-	Esp32WiFiMode WiFiMode;				// Access point or connected device behaviour by default
-	Esp32BLEMode BLEMode;				// Client or server behaviour for BLE
+	Esp32WirelessType wirelessType;		// What type of wireless connection should be used
+	Esp32WiFiMode wifiMode;					// Access point or connected device behaviour by default
+	Esp32BLEMode bleMode;					// Client or server behaviour for BLE
+	ESP32BLEClientFilter bleFilterMode;	// Filter for BLE client mode
 } Esp32ManagerConfig;
 
 extern Esp32ManagerConfig* esp32ConfigPtr;	// Pointer to the config structure of the application

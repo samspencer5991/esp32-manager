@@ -71,7 +71,7 @@ void (*mPetalProgramChangeCallback)(MidiInterfaceType interface, uint8_t channel
 BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> BLUEMIDI(BLE_DEVICE_NAME); \
 MIDI_NAMESPACE::MidiInterface<BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE>,DeviceApiPortSettings> blueMidi((BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_ESP32_NimBLE> &)BLUEMIDI);
 
-BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_Client_ESP32> BLUEMIDICLIENT(BLE_CLIENT_DEVICE_NAME); \
+BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_Client_ESP32> BLUEMIDICLIENT("FootCtrl"); \
 MIDI_NAMESPACE::MidiInterface<BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_Client_ESP32>, BLEMIDI_NAMESPACE::MySettings> blueMidiClient((BLEMIDI_NAMESPACE::BLEMIDI_Transport<BLEMIDI_NAMESPACE::BLEMIDI_Client_ESP32> &)BLUEMIDICLIENT);
 
 
@@ -191,12 +191,26 @@ void midi_Init()
 
 	// BLE
 #ifdef USE_BLE_MIDI
+	// Server
 	blueMidi.setHandleControlChange(blueMidi_ControlChangeCallback);
 	blueMidi.setHandleProgramChange(blueMidi_ProgramChangeCallback);
 	blueMidi.setHandleSystemExclusive(blueMidi_SysexCallback);
 
 	BLUEMIDI.setHandleConnected(blueMidi_OnConnected);
 	BLUEMIDI.setHandleDisconnected(blueMidi_OnDisconnected);
+
+	// Client
+	BLUEMIDICLIENT.setHandleConnected([]()
+                             {
+                               Serial.println("---------CONNECTED---------");
+
+                             });
+
+  BLUEMIDICLIENT.setHandleDisconnected([]()
+                                {
+                                  Serial.println("---------NOT CONNECTED---------");
+
+                                });
 #endif
 
 	// WiFi RTP (Apple MIDI)
@@ -250,7 +264,18 @@ void midi_Init()
 	// BLE
 #ifdef USE_BLE_MIDI
 	if(esp32ConfigPtr->wirelessType == Esp32BLE)
-		blueMidi.begin(MIDI_CHANNEL_OMNI);
+	{
+		if(esp32ConfigPtr->bleMode == Esp32BLEClient)
+		{
+			ESP_LOGV(TAG, "Starting BLE MIDI Central");
+			blueMidiClient.begin(MIDI_CHANNEL_OMNI);
+		}
+		else
+		{
+			ESP_LOGV(TAG, "Starting BLE MIDI Server");
+			blueMidi.begin(MIDI_CHANNEL_OMNI);
+		}
+	}
 #endif
 	// Serial0
 #ifdef USE_SERIAL0_MIDI
@@ -292,12 +317,21 @@ void midi_ReadAll()
 {
 	// BLE
 #ifdef USE_BLE_MIDI
-	if(bleEnabled)
-		blueMidi.read();
+	if(esp32ConfigPtr->wirelessType == Esp32BLE)
+	{
+		if(esp32ConfigPtr->bleMode == Esp32BLEClient)
+		{
+			blueMidiClient.read();
+		}
+		else
+		{
+			blueMidi.read();
+		}
+	}
 #endif
 	// WiFi RTP
 #ifdef USE_WIFI_RTP_MIDI
-	if(wifiEnabled)
+	if(esp32ConfigPtr->wirelessType == Esp32WiFi && wifiConnected)
 		rtpMidi.read();
 #endif
 	// USBD
