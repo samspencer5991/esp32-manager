@@ -34,6 +34,7 @@ typedef enum
 	Esp32BLEClientExclusion
 } ESP32BLEClientFilter;
 
+// Structure to be stored in application non-volatile config memory
 typedef struct
 {
 	Esp32WirelessType wirelessType;		// What type of wireless connection should be used
@@ -43,6 +44,10 @@ typedef struct
 } Esp32ManagerConfig;
 
 extern Esp32ManagerConfig* esp32ConfigPtr;	// Pointer to the config structure of the application
+
+
+
+
 
 void esp32Manager_Init();
 void esp32Manager_Process();

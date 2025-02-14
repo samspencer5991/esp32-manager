@@ -13,16 +13,30 @@
 #define SYSEX_DEVICE_API_COMMAND 	0x01
 #define SYSEX_PETAL_COMMAND 			0x02
 
-
+// This order is used to reference MIDI handles
 typedef enum
 {
+#ifdef USE_USBD_MIDI
 	MidiUSBD,
+#endif
+#ifdef USE_USBH_MIDI
 	MidiUSBH,
+#endif
+#ifdef USE_BLE_MIDI
 	MidiBLE,
+#endif
+#ifdef USE_WIFI_RTP_MIDI
 	MidiWiFiRTP,
+#endif
+#ifdef USE_SERIAL0_MIDI
 	MidiSerial0,
+#endif
+#ifdef USE_SERIAL1_MIDI
 	MidiSerial1,
+#endif
+#ifdef USE_SERIAL2_MIDI
 	MidiSerial2,
+#endif
 	MidiNone
 } MidiInterfaceType;
 
@@ -34,6 +48,7 @@ typedef enum
 } SysExCommandType;
 
 void midi_Init();
+void midi_ApplyThruSettings();
 void midi_InitWiFiRTP();
 void midi_ReadAll();
 //uint8_t midi_BleConnected();
@@ -46,6 +61,15 @@ void turnOnBLE();
 #endif
 
 extern uint8_t bleEnabled;
+
+extern uint8_t numMidiHandles;
+extern uint8_t* usbdMidiThruHandlesPtr;
+extern uint8_t* usbhMidiThruHandlesPtr;
+extern uint8_t* bleMidiThruHandlesPtr;
+extern uint8_t* wifiMidiThruHandlesPtr;
+extern uint8_t* serial0MidiThruHandlesPtr;
+extern uint8_t* serial1MidiThruHandlesPtr;
+extern uint8_t* serial2MidiThruHandlesPtr;
 
 void midi_AssignControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value));
 void midi_AssignProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number));

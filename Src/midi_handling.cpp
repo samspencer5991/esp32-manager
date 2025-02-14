@@ -28,7 +28,7 @@
 #define SYSEX_END		0xF7
 
 #ifndef BLE_DEVICE_NAME
-#define BLE_DEVICE_NAME "Pirate MIDI BLE"
+#define BLE_DEVICE_NAME "MIDI BLE"
 #endif
 
 const char* TAG = "MIDI";
@@ -64,6 +64,17 @@ void (*mProgramChangeCallback)(MidiInterfaceType interface, uint8_t channel, uin
 void (*mPetalControlChangeCallback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value) = nullptr;
 void (*mPetalSystemExclusiveCallback)(MidiInterfaceType interface, uint8_t * array, unsigned size) = nullptr;
 void (*mPetalProgramChangeCallback)(MidiInterfaceType interface, uint8_t channel, uint8_t number) = nullptr;
+
+// MIDI thru array pointers
+uint8_t numMidiHandles = 0;
+uint8_t* usbdidiThruHandlesPtr;
+uint8_t* usbhMidiThruHandlesPtr;
+uint8_t* bleMidiThruHandlesPtr;
+uint8_t* wifiMidiThruHandlesPtr;
+uint8_t* serial0MidiThruHandlesPtr;
+uint8_t* serial1MidiThruHandlesPtr;
+uint8_t* serial2MidiThruHandlesPtr;
+
 
 //-------------- MIDI Input/Output Objects & Handling --------------//
 // Bluetooth Low Energy
@@ -179,6 +190,7 @@ void midi_Init()
 	// General MIDI callback assignment
 	// USBD
 #ifdef USE_USBD_MIDI
+	numMidiHandles++;
 	usbdMidi.setHandleControlChange(usbdMidi_ControlChangeCallback);
 	usbdMidi.setHandleProgramChange(usbdMidi_ProgramChangeCallback);
 	usbdMidi.setHandleSystemExclusive(usbdMidi_SysexCallback);
@@ -186,11 +198,13 @@ void midi_Init()
 
 	// USBH
 #ifdef USE_USBH_MIDI
+	numMidiHandles++;
 	//midih_Init();
 #endif
 
 	// BLE
 #ifdef USE_BLE_MIDI
+	numMidiHandles++;
 	// Server
 	blueMidi.setHandleControlChange(blueMidi_ControlChangeCallback);
 	blueMidi.setHandleProgramChange(blueMidi_ProgramChangeCallback);
@@ -215,6 +229,7 @@ void midi_Init()
 
 	// WiFi RTP (Apple MIDI)
 #ifdef USE_WIFI_RTP_MIDI
+	numMidiHandles++;		
 	RTP.setHandleConnected([](const APPLEMIDI_NAMESPACE::ssrc_t & ssrc, const char* name) {
     rtpIsConnected++;
 	 Serial.println("Connected to session");
@@ -235,6 +250,7 @@ void midi_Init()
 
 	// Serial0
 #ifdef USE_SERIAL0_MIDI
+  	numMidiHandles++;
 	serial0Midi.setHandleControlChange(serial0Midi_ControlChangeCallback);
 	serial0Midi.setHandleProgramChange(serial0Midi_ProgramChangeCallback);
 	serial0Midi.setHandleSystemExclusive(serial0Midi_SysexCallback);
@@ -242,6 +258,7 @@ void midi_Init()
 
 	// Serial1
 #ifdef USE_SERIAL1_MIDI
+	numMidiHandles++;		
 	serial1Midi.setHandleControlChange(serial1Midi_ControlChangeCallback);
 	serial1Midi.setHandleProgramChange(serial1Midi_ProgramChangeCallback);
 	serial1Midi.setHandleSystemExclusive(serial1Midi_SysexCallback);
@@ -249,6 +266,7 @@ void midi_Init()
 
 	// Serial2
 #ifdef USE_SERIAL2_MIDI
+	numMidiHandles++;
 	serial2Midi.setHandleControlChange(serial2Midi_ControlChangeCallback);
 	serial2Midi.setHandleProgramChange(serial2Midi_ProgramChangeCallback);
 	serial2Midi.setHandleSystemExclusive(serial2Midi_SysexCallback);
@@ -279,11 +297,58 @@ void midi_Init()
 #endif
 	// Serial0
 #ifdef USE_SERIAL0_MIDI
+	ESP_LOGV(TAG, "Starting Serial0 MIDI");
 	serial0Midi.begin(MIDI_CHANNEL_OMNI);
 #endif
 	// Serial1
 #ifdef USE_SERIAL1_MIDI
+	ESP_LOGV(TAG, "Starting Serial1 MIDI");
 	serial1Midi.begin(MIDI_CHANNEL_OMNI);
+#endif
+	// Serial2
+#ifdef USE_SERIAL2_MIDI
+	ESP_LOGV(TAG, "Starting Serial2 MIDI");
+	serial2Midi.begin(MIDI_CHANNEL_OMNI);
+#endif
+}
+
+void midi_ApplyThruSettings()
+{
+	// Apply MIDI thru settings
+	// USBD
+#ifdef USE_USBD_MIDI
+	if(usbdMidiThruHandlesPtr[MidiUSBD])
+		usbdMidi.turnThruOn();
+#endif
+	// USBH
+#ifdef USE_USBH_MIDI	
+	if(usbhMidiThruHandlesPtr[MidiUSBH])
+		usbhMidi.turnThruOn();
+#endif
+	// BLE
+#ifdef USE_BLE_MIDI
+	if(bleMidiThruHandlesPtr[MidiBLE])
+		blueMidi.turnThruOn();
+#endif
+	// WiFi
+#ifdef USE_WIFI_RTP_MIDI
+	if(wifiMidiThruHandlesPtr[MidiWiFiRTP])
+		rtpMidi.turnThruOn();
+#endif
+	// Serial0
+#ifdef USE_SERIAL0_MIDI
+	if(serial0MidiThruHandlesPtr[MidiSerial0])
+		serial0Midi.turnThruOn();
+#endif
+	// Serial1
+#ifdef USE_SERIAL1_MIDI
+	if(serial1MidiThruHandlesPtr[MidiSerial1])
+		serial1Midi.turnThruOn();
+#endif
+	// Serial2
+#ifdef USE_SERIAL2_MIDI
+	if(serial2MidiThruHandlesPtr[MidiSerial2])
+		serial2Midi.turnThruOn();
 #endif
 }
 
@@ -299,7 +364,7 @@ void midi_InitWiFiRTP()
 	{
 		if(wifiConnected)
 		{
-			Serial.print("Add device named Arduino with Host: ");
+			Serial.print("Success: ");
 			Serial.println(WiFi.localIP());
 			Serial.println(RTP.getPort());
 			Serial.println(RTP.getName());
@@ -321,7 +386,10 @@ void midi_ReadAll()
 	{
 		if(esp32ConfigPtr->bleMode == Esp32BLEClient)
 		{
-			blueMidiClient.read();
+			if(blueMidiClient.read())
+			{
+				
+			}
 		}
 		else
 		{
