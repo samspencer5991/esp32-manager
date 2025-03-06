@@ -3,8 +3,6 @@
 #ifdef USE_EXTERNAL_USB_HOST
 
 #include "SPI.h"
-
-#include "usb_midi_host.h"
 #include "usb_helpers.h"
 #include "usb_cdc_handling.h"
 #include "tonexone.h"
