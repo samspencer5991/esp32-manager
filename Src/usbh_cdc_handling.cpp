@@ -2,7 +2,7 @@
 
 #include "Arduino.h"
 #include "usb_helpers.h"
-#include "usb_cdc_handling.h"
+#include "usbh_cdc_handling.h"
 #include "usb_host.h"
 
 #include "tonexOne.h"
@@ -26,39 +26,50 @@ void cdc_Init()
 	SerialHost.begin(115200);
 }
 
-void cdc_Process()
+void cdch_ProcessTask(void* parameter)
 {
-	// If a CDC device has been mounted correctly, read any available serial data and process events
-	if (cdcDeviceMounted)
+	while(1)
 	{
-		uint8_t buf[64];
-		if (SerialHost.connected() && SerialHost.available())
+		//UBaseType_t uxHighWaterMark;
+		//uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
+		//ESP_LOGD(TAG, "CDC Process Task High Water Mark: %d", uxHighWaterMark);
+		// If a CDC device has been mounted correctly, read any available serial data and process events
+		if (cdcDeviceMounted)
 		{
-			size_t count = SerialHost.read(buf, sizeof(buf));
-
-			// For specific connected devices
-			if (cdcDeviceType == CDCDeviceTonexOne)
+			uint8_t buf[64];
+			if (SerialHost.connected() && SerialHost.available())
 			{
-				tonexOne_HandleReceivedData((char *)buf, count);
+				size_t count = SerialHost.read(buf, sizeof(buf));
+
+				// For specific connected devices
+				if (cdcDeviceType == CDCDeviceTonexOne)
+				{
+					tonexOne_HandleReceivedData((char *)buf, count);
+				}
+			}
+			if(cdcDeviceType == CDCDeviceTonexOne)
+			{
+				tonexOne_Process();
 			}
 		}
-		if(cdcDeviceType == CDCDeviceTonexOne)
+		if(cdcDeviceInitRequired)
 		{
-			tonexOne_Process();
+			if(cdcDeviceType == CDCDeviceTonexOne)
+			{
+				tonexOne_Init();
+				tonexOne_SendHello();
+				//tonexOne_SendHello();
+			}
+			cdcDeviceInitRequired = 0;
 		}
-	}
-	if(cdcDeviceInitRequired)
-	{
-		if(cdcDeviceType == CDCDeviceTonexOne)
-		{
-			//tonexOne_SendHello();
-		}
-		cdcDeviceInitRequired = 0;
+		// Feed watchdog and ensure task splitting
+		vTaskDelay(2 / portTICK_PERIOD_MS);
 	}
 }
 
 uint16_t cdc_Transmit(uint8_t* buffer, size_t len)
 {
+	ESP_LOGD(TAG, "Sending %d bytes to CDC device", len);
 	if(!cdcDeviceMounted)
 		return 0;
 	uint16_t remainingBytes = len;
@@ -119,7 +130,6 @@ void cdc_DeviceConfiguredHandler()
 		SerialHost.mount(cdcDeviceIdx);
 		cdcDeviceType = CDCDeviceTonexOne;
 		cdcDeviceInitRequired = 1;
-		tonexOne_SendHello();
 	}
 }
 
@@ -133,31 +143,6 @@ void cdc_DeviceConfiguredHandler()
 
 extern "C" void tuh_cdc_mount_cb(uint8_t idx)
 {
-	/*
-	// Set connection flags
-	// Check for a supported CDC device
-	// Getting the device descriptors is also done in the generic tuh_mount_cb, however this cb is called first
-	// So to avoid an empty device descriptor, it is re-fetched to check for supported device connection
-	// TODO check that idx is a valid method for sorting through attached devices
-	cdcDevice = &dev_info[idx];
-	tuh_descriptor_get_device_sync(idx + 1, &cdcDevice->desc_device, 18);
-
-	tusb_desc_device_t *desc = &cdcDevice->desc_device;
-	Serial0.printf("  idVendor            0x%04x\r\n", desc->idVendor);
-	Serial0.printf("  idProduct           0x%04x\r\n", desc->idProduct);
-
-	// Currently, the only supported CDC device is the Tonex One
-	if (cdcDevice->desc_device.idVendor == TONEX_ONE_VID &&
-		 cdcDevice->desc_device.idProduct == TONEX_ONE_PID)
-	{
-		ESP_LOGE(TAG, "Tonex One found at idx %d. Mounting CDC Serial device.", idx);
-		SerialHost.mount(idx);
-		cdcDeviceType = CDCDeviceTonexOne;
-		cdcDeviceInitRequired = 1;
-		cdcDeviceIdx = idx;
-		tonexOne_SendHello();
-	}
-	*/
 	// Bind SerialHost object to this interface index
 	cdcDeviceIdx = idx;
 	cdcDeviceMounted = 1;

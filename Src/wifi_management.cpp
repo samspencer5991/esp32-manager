@@ -4,41 +4,82 @@
 #include "wifi_management.h"
 #include <WiFiClientSecure.h>
 #include "ESP32Ping.h"
+#include "esp32_manager.h"
 
 WiFiManager wifiManager;
 
-uint8_t wifiConnected = 0;
-uint8_t wifiEnabled = 0;
+const char* WIFI_TAG = "WIFI_MANAGER";
 
+void wifi_UpdateInfoTask();
+
+// RTOS Tasks
+void wifi_ProcessTask(void* parameter)
+{
+	static uint16_t wifiProcessCount = 0;
+	//UBaseType_t uxHighWaterMark;
+	while(1)
+	{
+		//uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
+		//ESP_LOGI(WIFI_TAG, "WiFi Process Task High Water Mark: %d", uxHighWaterMark);
+		wifiManager.process();
+		ota_Process();
+		vTaskDelay(5 / portTICK_PERIOD_MS);
+		wifiProcessCount++;
+		if(wifiProcessCount >= 200)
+		{
+			wifi_UpdateInfoTask();
+			wifiProcessCount = 0;
+		}
+	}
+}
+
+void wifi_UpdateInfoTask()
+{
+	// Check the WiFi connection status
+	wl_status_t status = WiFi.status();
+	if(status != WL_CONNECTED)
+	{
+		esp32Info.wifiConnected = 0;
+		ESP_LOGI(WIFI_TAG, "WiFi not connected, status: %d", status);
+	}
+	else
+	{
+		esp32Info.currentRssi = WiFi.RSSI();
+		ESP_LOGI(WIFI_TAG, "WiFi connected, RSSI: %d", esp32Info.currentRssi);
+	}
+}
+
+// General Functions
 uint8_t wifi_Connect(const char* hostName, const char* apName, const char* apPassword)
 {
-	if(wifiEnabled)
+	if(esp32ConfigPtr->wirelessType == Esp32WiFi)
 	{
 		if(hostName != NULL)
 			WiFi.setHostname(hostName);
 
 		WiFi.mode(WIFI_STA);	
-		wifiManager.setConfigPortalTimeout(60);
+		wifiManager.setConfigPortalBlocking(false);
+		wifiManager.setConfigPortalTimeout(300);
 		if (!wifiManager.autoConnect(apName, apPassword))
 		{
-			Serial.println("failed to connect and hit timeout");
-			wifiConnected = 0;
+			ESP_LOGI("WiFi", "Configuration portal beginning");
+			esp32Info.wifiConnected = 0;
 		}
 		else
 		{
-			Serial.print("WiFi connected! @ ");
+			ESP_LOGI("WiFi", "WiFi connected! @ ");
 			Serial.println(WiFi.macAddress());
 			ota_Begin();
-			wifiConnected = 1;
+			esp32Info.wifiConnected = 1;
 		}
 	}
-	return wifiConnected;
+	return esp32Info.wifiConnected;
 }
 
 void wifi_TurnOff()
 {
 	WiFi.mode(WIFI_OFF);
-	wifiConnected = 0;
+	esp32Info.wifiConnected = 0;
 }
 
 void wifi_ResetSettings()
@@ -48,7 +89,7 @@ void wifi_ResetSettings()
 
 uint8_t wifi_ConnectionStatus()
 {
-	return wifiConnected;
+	return 1;
 }
 
 uint8_t wifi_CheckConnectionPing()
@@ -56,15 +97,13 @@ uint8_t wifi_CheckConnectionPing()
 	uint8_t success = Ping.ping("www.google.com", 3);
 	if(!success)
 	{
-		Serial.println("Ping failed");
+		ESP_LOGI("WiFi", "Ping failed");
+		esp32Info.wifiConnected = 1;
 		return 0;
 	}
 
-	Serial.println("Ping succesful.");
+	ESP_LOGI("WiFi", "Ping succesful.");
+	esp32Info.wifiConnected = 2;
 	return 1;
 }
 
-void wifi_Loop()
-{
-	wifiManager.process();
-}

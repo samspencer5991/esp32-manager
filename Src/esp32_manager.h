@@ -7,6 +7,11 @@
 //#include "ota_updating.h"
 //#include "usb_host.h"
 //#include "wifi_management.h"
+#ifdef USE_WIFI_RTP_MIDI
+#include <WiFi.h>
+#endif
+
+#define WIFI_CONNECTED
 
 typedef enum
 {
@@ -43,13 +48,24 @@ typedef struct
 	ESP32BLEClientFilter bleFilterMode;	// Filter for BLE client mode
 } Esp32ManagerConfig;
 
+typedef struct
+{
+	int8_t currentRssi;
+	char currentSsid[32];
+	char currentIP[20];
+	char macAddress[32];
+	uint8_t wifiConnected;	// 0 = not connected, 1 = connected (no internet), 2 = connected (internet)
+} Esp32ManagerInfo;
+
 extern Esp32ManagerConfig* esp32ConfigPtr;	// Pointer to the config structure of the application
+extern Esp32ManagerInfo esp32Info;		// Defined by the ESP32 manager
 
 
 
 
 
 void esp32Manager_Init();
+void esp32Manager_CreateTasks();
 void esp32Manager_Process();
 
 #endif // ESP32_HANDLER_H_

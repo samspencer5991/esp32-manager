@@ -47,6 +47,9 @@ typedef enum
 	SysExPetal
 } SysExCommandType;
 
+//-------------- FreeRTOS Tasks --------------//
+void midi_ProcessTask(void* parameter);
+
 void midi_Init();
 void midi_ApplyThruSettings();
 void midi_InitWiFiRTP();

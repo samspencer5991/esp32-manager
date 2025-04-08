@@ -11,7 +11,7 @@ typedef enum
 } CDCDeviceType;
 
 void cdc_Init();
-void cdc_Process();
+void cdch_ProcessTask(void* parameter);
 uint16_t cdc_Transmit(uint8_t* buffer, size_t len);
 void cdc_DeviceConfiguredHandler();
 

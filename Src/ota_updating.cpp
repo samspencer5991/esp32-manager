@@ -39,7 +39,7 @@ void ota_Begin()
 	Serial.println("HTTP server started");
 }
 
-void ota_Loop()
+void ota_Process()
 {
 	ElegantOTA.loop();
 }

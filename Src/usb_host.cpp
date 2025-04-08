@@ -4,7 +4,7 @@
 
 #include "SPI.h"
 #include "usb_helpers.h"
-#include "usb_cdc_handling.h"
+#include "usbh_cdc_handling.h"
 #include "tonexone.h"
 
 // Language ID: English
@@ -24,6 +24,21 @@ void parse_config_descriptor(uint8_t dev_addr, tusb_desc_configuration_t const *
 uint16_t count_interface_total_len(tusb_desc_interface_t const *desc_itf, uint8_t itf_count, uint16_t max_len);
 void print_lsusb(void);
 
+
+// FreeRTOS Tasks
+void usbh_ProcessTask(void* parameter)
+{
+	while(1)
+	{
+		//UBaseType_t uxHighWaterMark;
+		//uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
+		//ESP_LOGD("USBH", "USBH Process Task High Water Mark: %d", uxHighWaterMark);
+		USBHost.task(0);
+		// Feed watchdog and ensure task splitting
+		vTaskDelay(1 / portTICK_PERIOD_MS);
+	}
+
+}
 
 //---------------------- Public Functions ----------------------//
 void usbh_Init()

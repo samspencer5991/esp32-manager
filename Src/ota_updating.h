@@ -4,10 +4,8 @@
 #include "Arduino.h"
 
 void ota_Begin();
-void ota_Loop();
+void ota_Process();
 
 String ota_GetLatestVersion(String url);
-void testOTA();
-void testOTALoop();
 
 #endif /* OTA_UPDATING_H_ */
