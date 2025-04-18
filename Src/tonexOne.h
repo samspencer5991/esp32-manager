@@ -7,8 +7,10 @@
 #define TONEX_ONE_PID 0x00D1
 #define TONEX_ONE_VID 0x1963
 
-
+#ifndef TONEX_ONE_DEFAULT_MIDI_CHANNEL
 #define TONEX_ONE_DEFAULT_MIDI_CHANNEL 		9
+#endif
+#define MAX_TONEX_ONE_PRESETS 						20
 
 // MIDI Control Change Mapping
 // Delay
@@ -113,8 +115,14 @@
 // Presets
 #define TONEX_ONE_PRESET_DOWN_CC					86
 #define TONEX_ONE_PRESET_UP_CC					87
-// Amplifier Model
+#define TONEX_ONE_GO_TO_PRESET_CC				88
 
+// Amplifier Model
+#define TONEX_ONE_MODEL_CABINET_TYPE_CC		100
+#define TONEX_ONE_MODEL_ENABLE_CC				101
+#define TONEX_ONE_MODEL_GAIN_CC					102
+#define TONEX_ONE_MODEL_VOLUME_CC				103
+#define TONEX_ONE_MODEL_MIX_CC					104
 
 // Virtual IR Cab
 #define TONEX_ONE_VIR_CAB_PRESENCE_CC			106
@@ -133,14 +141,24 @@
 #define TONEX_ONE_GLOBAL_CABSIM_BYPASS_CC		125
 #define TONEX_ONE_GLOBAL_TEMPO_SOURCE_CC		126
 
+typedef enum 
+{
+   tonexOneSetPresetCommand,
+    tonexOneNextPresetCommand,
+    tonexOnePreviousPresetCommand,
+	tonexOneModifyParameterCommand
+} TonexOneCommand;
 
+typedef struct 
+{
+    uint8_t command;
+    uint32_t payload;
+    float payloadFloat;
+} TonexOneMessage;
 
 void tonexOne_Init();
+void tonexOne_InitQueue(QueueHandle_t comms_queue);
 void tonexOne_SendHello();
 uint8_t tonexOne_HandleReceivedData(char *rxData, uint16_t len);
 void tonexOne_Process();
-void tonexOne_SendGoToPreset(uint8_t presetNum);
-void tonexOne_SendNextPreset();
-void tonexOne_SendPreviousPreset();
-
 #endif // _TONEXONE_H_

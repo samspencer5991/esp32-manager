@@ -17,7 +17,6 @@ static const char *TAG = "tonexOne";
 #define MAX_FULL_PRESET_DATA                        RX_TEMP_BUFFER_SIZE
 #define MAX_STATE_DATA                              512
 
-#define MAX_PRESETS 20
 #define TONEX_ONE_RESP_OFFSET_PRESET_NAME_LEN 32
 
 #define TONEX_STATE_OFFSET_START_INPUT_TRIM     15          // 0x000070c1 (-15.0) -> 0x000058c1 (0) -> 0x00007041 (15.0) 
@@ -139,6 +138,10 @@ uint16_t tonexOne_LocateMessageEnd(uint8_t* data, uint16_t length);
 void tonexOne_ParsePresetParameters(uint8_t* raw_data, uint16_t length);
 ParsingStatus tonexOne_ParsePresetDetails(uint8_t* unframed, uint16_t length, uint16_t index);
 
+esp_err_t tonexOne_ModifyParameter(uint16_t index, float value);
+esp_err_t tonexOne_ModifyGlobal(uint16_t global_val, float value);
+esp_err_t tonexOne_SendSingleParameter(uint16_t index, float value);
+
 //uint8_t framedBuffer[MAX_RAW_DATA];
 //uint8_t txBuffer[MAX_RAW_DATA];
 //uint8_t tonexOneRawRxData[RX_BUFFER_SIZE];
@@ -147,8 +150,9 @@ static TonexData* tonexData;
 static char preset_name[TONEX_ONE_RESP_OFFSET_PRESET_NAME_LEN + 1];
 static uint8_t* txBuffer;
 static uint8_t* framedBuffer;
+static QueueHandle_t input_queue;
 
-uint8_t bootInitNeeded = 0;
+uint8_t bootInitNeeded = 1;
 char presetName[TONEX_ONE_RESP_OFFSET_PRESET_NAME_LEN + 1];
 volatile uint8_t newDataReception = 0;
 uint16_t rxDataSize = 0;
@@ -206,6 +210,11 @@ void tonexOne_Init()
 	memset((void*)tonexData, 0, sizeof(tonexData));
 	tonexData->tonexState = CommsStateIdle;
 	ESP_LOGE(TAG, "Tonex One buffers allocated in PSRAM: %d", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+}
+
+void tonexOne_InitQueue(QueueHandle_t comms_queue)
+{
+	input_queue = comms_queue;
 }
 
 void tonexOne_SendHello()
@@ -337,43 +346,114 @@ uint8_t tonexOne_HandleReceivedData(char *rxData, uint16_t len)
 	 return 0;
 }
 
-void tonexOne_SendGoToPreset(uint8_t presetNum)
+void tonexOne_Process()
 {
-	if (presetNum >= MAX_PRESETS)
-		return;
+	TonexOneMessage message;
 
-	tonexOne_SetPresetInSlot(presetNum, SlotC, 1);
+	switch (tonexData->tonexState)
+	{
+		case CommsStateReady:
+		{
+				// check for any input messages
+				if (xQueueReceive(input_queue, (void*)&message, 0) == pdPASS)
+				{
+					ESP_LOGI(TAG, "Got Input message: %d", message.command);
+
+					// process it
+					switch (message.command)
+					{
+						case tonexOneSetPresetCommand:
+						{
+								if (message.payload < MAX_TONEX_ONE_PRESETS)
+								{
+									// always using Stomp mode C for preset setting
+									if (tonexOne_SetPresetInSlot(message.payload, SlotC, 1) != ESP_OK)
+									{
+										// failed return to queue?
+									}
+								}
+						} break;   
+
+						case tonexOneNextPresetCommand:
+						{
+							uint8_t nextPreset = 0;
+							if (tonexData->message.slotCPreset < (MAX_TONEX_ONE_PRESETS - 1))
+								nextPreset = tonexData->message.slotCPreset + 1;
+
+							else
+								nextPreset = 0;
+
+							// always using Stomp mode C for preset setting
+							if (tonexOne_SetPresetInSlot(nextPreset, SlotC, 1) != ESP_OK)
+							{
+								ESP_LOGE(TAG, "Failed to set next preset!");
+							}
+							else
+							{
+								ESP_LOGI(TAG, "Set next preset successfully!");
+							}
+						} break;
+
+						case tonexOnePreviousPresetCommand:
+						{
+							uint8_t previousPreset = 0;
+							if (tonexData->message.slotCPreset > 0)
+								tonexData->message.slotCPreset - 1;
+							else
+								previousPreset = MAX_TONEX_ONE_PRESETS - 1;
+
+							// always using Stomp mode C for preset setting
+							if (tonexOne_SetPresetInSlot(tonexData->message.slotCPreset - 1, SlotC, 1) != ESP_OK)
+							{
+								ESP_LOGE(TAG, "Failed to set previous preset!");
+							}
+							else
+							{
+								ESP_LOGI(TAG, "Set previous preset successfully!");
+							}
+						} break;
+
+						case tonexOneModifyParameterCommand:
+						{
+								if (message.payload < TONEX_PARAM_LAST)
+								{
+									// modify the param
+									tonexOne_ModifyParameter(message.payload, message.payloadFloat);
+
+									// send it
+									tonexOne_SendSingleParameter(message.payload, message.payloadFloat);
+								}
+								else if (message.payload < TONEX_GLOBAL_LAST)
+								{
+									// modify the global
+									tonexOne_ModifyGlobal(message.payload, message.payloadFloat);
+
+									// debug
+									//usb_tonex_one_dump_state(&TonexData->Message.PedalData.TonexStateData);
+
+									// send it by setting the same preset active again, which sends the state data
+									tonexOne_SetPresetInSlot(tonexData->message.slotCPreset, SlotC, 1);
+								}
+								else
+								{
+									ESP_LOGW(TAG, "Attempt to modify unknown param %d", (int)message.payload);
+								}
+						} break;
+					}
+				}
+		} break;
+		case CommsStateIdle:
+		{
+			tonexOne_SendHello();
+		}
+
+		default:
+		{
+			ESP_LOGI(TAG, "Unknown State: %d", (tonexData->tonexState));
+		} break;
+	}
 }
 
-void tonexOne_SendNextPreset()
-{
-	// Check for preset boundries
-	if(tonexData->message.slotCPreset >= MAX_PRESETS-1)
-	{
-		tonexOne_SetPresetInSlot(0, SlotC, 1);
-	}
-	else
-	{
-		tonexOne_SetPresetInSlot(tonexData->message.slotCPreset + 1, SlotC, 1);
-	}
-}
-
-void tonexOne_SendPreviousPreset()
-{
-	if(tonexData->message.slotCPreset == 0 || tonexData->message.slotCPreset >= MAX_PRESETS)
-	{
-		tonexOne_SetPresetInSlot(MAX_PRESETS - 1, SlotC, 1);
-	}
-	else
-	{
-		tonexOne_SetPresetInSlot(tonexData->message.slotCPreset - 1, SlotC, 1);
-	}
-}
-
-void tonexOne_ModifyParameter()
-{
-
-}
 
 //---------------------- Private Functions ----------------------//
 esp_err_t tonexOne_ProcessSingleMessage(uint8_t* data, uint16_t length)
@@ -624,7 +704,6 @@ esp_err_t tonexOne_RequestState(void)
 	SerialHost.write(framedBuffer, outLength);
 	SerialHost.flush();
 	return 0;
-	// return usb_tonex_one_transmit(framedBuffer, outlength);
 }
 
 esp_err_t tonexOne_SetActiveSlot(Slot newSlot)
@@ -648,13 +727,8 @@ esp_err_t tonexOne_SetActiveSlot(Slot newSlot)
 	// save the slot
 	tonexData->message.currentSlot = newSlot;
 
-	// firmware v1.1.4: offset needed is 12
-	// firmware v1.2.6: offset needed is 18
-	// todo could do version check and support multiple versions
-	uint8_t offset_from_end = 18;
-
 	// modify the buffer with the new slot
-	tonexData->message.pedalData.stateData[tonexData->message.pedalData.stateDataLength - offset_from_end + 7] = (uint8_t)newSlot;
+	tonexData->message.pedalData.stateData[tonexData->message.pedalData.stateDataLength - TONEX_STATE_OFFSET_END_CURRENT_SLOT + 7] = (uint8_t)newSlot;
 
 	// build total message
 	memcpy((void *)txBuffer, (void *)message, sizeof(message));
@@ -668,7 +742,6 @@ esp_err_t tonexOne_SetActiveSlot(Slot newSlot)
 	SerialHost.write(framedBuffer, framedLength);
 	SerialHost.flush();
 	return 0;
-	// return usb_tonex_one_transmit(framedBuffer, framedLength);
 }
 
 uint16_t tonexOne_GetCurrentActivePreset(void)
@@ -726,7 +799,7 @@ esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t select
 
 
 	// check if setting same preset twice will set bypass
-	if (1)
+	if (0)
 	{
 		if (selectSlot && (tonexData->message.currentSlot == newSlot) && (preset == tonexOne_GetCurrentActivePreset()))
 		{
@@ -794,7 +867,10 @@ esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t select
 	framedLength = tonexOne_AddFraming(txBuffer, sizeof(message) + tonexData->message.pedalData.stateDataLength, framedBuffer);
 
 	// send it
-	cdc_Transmit(framedBuffer, framedLength);
+	size_t sentBytes = cdc_Transmit(framedBuffer, framedLength);
+	//size_t sentBytes = SerialHost.write(framedBuffer, framedLength);
+	//SerialHost.flush();
+	ESP_LOGE(TAG, "Data Transmit Complete: %d (%d from driver)", (int)framedLength, sentBytes);
 
 	return 0;
 }
@@ -818,7 +894,6 @@ esp_err_t tonexOne_RequestPresetDetails(uint8_t preset_index, uint8_t full_detai
 	ESP_LOGD(TAG, "Sent: Request Full Preset Details\n");
 	SerialHost.write(framedBuffer, outLength);
 	SerialHost.flush();
-	//return tonexOne_Transmit(framedBuffer, outlength);
 	return res;
 }
 
@@ -944,6 +1019,41 @@ ParsingStatus tonexOne_ParsePacket(uint8_t *message, uint16_t inlength)
 		return ParsingOk;
 	}
 	};
+}
+
+esp_err_t tonexOne_SendSingleParameter(uint16_t index, float value)
+{
+    uint16_t framedLength;
+
+    // NOTE: only supported in newer Pedal firmware that came with Editor support!
+
+    // Build message                                         len LSB  len MSB
+    uint8_t message[] = {0xb9, 0x03, 0x81, 0x09, 0x03, 0x82, 0x0A,     0x00, 0x80, 0x0B, 0x03};
+
+    // payload           unknown                 param index             4 byte float value
+    uint8_t payload[] = {0xB9, 0x04, 0x02, 0x00, 0x00,             0x88, 0x00, 0x00, 0x00, 0x00 };
+
+    // set param index
+    payload[4] = index;
+
+    // set param value
+    memcpy((void*)&payload[6], (void*)&value, sizeof(value));
+
+    // build total message
+    memcpy((void*)txBuffer, (void*)message, sizeof(message));
+    memcpy((void*)&txBuffer[sizeof(message)], (void*)payload, sizeof(payload));
+
+    // add framing
+    framedLength = tonexOne_AddFraming(txBuffer, sizeof(message) + sizeof(payload), framedBuffer);
+
+    // debug
+    //ESP_LOG_BUFFER_HEXDUMP(TAG, FramedBuffer, framed_length, ESP_LOG_INFO);
+
+    // send it
+	size_t sentBytes = SerialHost.write(framedBuffer, framedLength);
+	SerialHost.flush();
+	return 0;
+   // return usb_tonex_one_transmit(FramedBuffer, framed_length);
 }
 
 esp_err_t tonexOne_ModifyParameter(uint16_t index, float value)

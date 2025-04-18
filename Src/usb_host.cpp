@@ -28,9 +28,10 @@ void print_lsusb(void);
 // FreeRTOS Tasks
 void usbh_ProcessTask(void* parameter)
 {
+	UBaseType_t uxHighWaterMark;
+	static uint8_t usbProcessCount = 0;
 	while(1)
 	{
-		//UBaseType_t uxHighWaterMark;
 		//uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
 		//ESP_LOGD("USBH", "USBH Process Task High Water Mark: %d", uxHighWaterMark);
 		USBHost.task(0);

@@ -48,7 +48,7 @@ void esp32Manager_CreateTasks()
 	taskResult = xTaskCreatePinnedToCore(
 		wifi_ProcessTask, 	// Task function. 
 		"WiFiProcess", 		// name of task. 
-		5000, 					// Stack size of task 
+		3000, 					// Stack size of task 
 		NULL, 					// parameter of the task 
 		WIFI_TASK_PRIORITY, 						// priority of the task 
 		NULL, 					// Task handle to keep track of created task 
@@ -62,7 +62,7 @@ void esp32Manager_CreateTasks()
 		taskResult = xTaskCreatePinnedToCore(
 		usbh_ProcessTask,
 		"USB Host Process",
-		5000,
+		8000,
 		NULL,
 		USBH_TASK_PRIORITY,
 		NULL,
@@ -75,7 +75,7 @@ void esp32Manager_CreateTasks()
 	taskResult = xTaskCreatePinnedToCore(
 		cdch_ProcessTask,
 		"CDC Host Process",
-		50000,
+		30000,
 		NULL, 
 		CDC_TASK_PRIORITY, 
 		NULL,

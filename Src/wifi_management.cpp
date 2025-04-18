@@ -23,9 +23,9 @@ void wifi_ProcessTask(void* parameter)
 		//ESP_LOGI(WIFI_TAG, "WiFi Process Task High Water Mark: %d", uxHighWaterMark);
 		wifiManager.process();
 		ota_Process();
-		vTaskDelay(5 / portTICK_PERIOD_MS);
+		vTaskDelay(10 / portTICK_PERIOD_MS);
 		wifiProcessCount++;
-		if(wifiProcessCount >= 200)
+		if(wifiProcessCount >= 250)
 		{
 			wifi_UpdateInfoTask();
 			wifiProcessCount = 0;

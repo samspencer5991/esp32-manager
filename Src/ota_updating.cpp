@@ -52,7 +52,7 @@ String ota_GetLatestVersion(String url)
 	String response;
 	//client.setInsecure();
 	
-	http.begin(client, url);  // Specify the URL
+	http.begin(url);  // Specify the URL
 	int httpCode = http.GET();  // Send the GET request
 
 	if (httpCode > 0)
@@ -63,7 +63,7 @@ String ota_GetLatestVersion(String url)
 			// Get the response payload (JSON data)
 			response = http.getString();  
 			// Print the raw JSON data
-			Serial.println("Received JSON:");
+			ESP_LOGD("OTA", "Received JSON:");
 			//Serial.println(response);
 		}
 		else
@@ -97,7 +97,7 @@ void onOTAProgress(size_t current, size_t final)
   // Log every 1 second
   if (millis() - ota_progress_millis > 1000) {
     ota_progress_millis = millis();
-    Serial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
+    ESP_LOGI("OTA", "OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
   }
 }
 

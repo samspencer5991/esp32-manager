@@ -397,15 +397,18 @@ void midi_InitWiFiRTP()
 	{
 		if(esp32Info.wifiConnected)
 		{
-			Serial.print("Success: ");
-			Serial.println(WiFi.localIP());
-			Serial.println(RTP.getPort());
-			Serial.println(RTP.getName());
+			Serial.print("{\"debug\":{\"address\":\"");
+			Serial.print(WiFi.localIP());
+			Serial.print("\",\"port\":");
+			Serial.print(RTP.getPort());
+			Serial.print(",\"name\":\"");
+			Serial.print(RTP.getName());
+			Serial.print("\"}}~\n");
 			rtpMidi.begin(MIDI_CHANNEL_OMNI);
 		}
 		else
 		{
-			Serial.println("WiFi not connected, cannot start RTP MIDI");
+			//Serial.println("WiFi not connected, cannot start RTP MIDI");
 		}
 	}
 }
@@ -647,7 +650,7 @@ void usbdMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t val
 	{
 		mControlChangeCallback(MidiUSBD, channel, number, value);
 	}
-	ESP_LOGI(TAG, "USBD MIDI CC: Ch: %d, Num: %d, Val: %d\n", channel, number, value);
+	//ESP_LOGI(TAG, "USBD MIDI CC: Ch: %d, Num: %d, Val: %d\n", channel, number, value);
 
 }
 
