@@ -17,6 +17,7 @@ extern dev_info_t dev_info[];
 
 void usbh_Init();
 void usbh_ProcessTask(void* parameter);
+void usbh_Process();
 
 void usbh_PrintDeviceDescriptor(dev_info_t *dev, uint8_t daddr);
 

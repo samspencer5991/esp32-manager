@@ -73,7 +73,7 @@ void cdch_ProcessTask(void* parameter)
 			cdcDeviceInitRequired = 0;
 		}
 		// Feed watchdog and ensure task splitting
-		vTaskDelay(5 / portTICK_PERIOD_MS);
+		vTaskDelay(2 / portTICK_PERIOD_MS);
 	}
 }
 
@@ -133,12 +133,12 @@ uint16_t cdc_Transmit(uint8_t* buffer, size_t len)
 			vTaskDelay(1/portTICK_PERIOD_MS);
 		}
 		// print the data packet for error checking
-		esp_log_buffer_hex_internal(TAG, bufferPtr, packetSize, ESP_LOG_DEBUG);
+		//esp_log_buffer_hex_internal(TAG, bufferPtr, packetSize, ESP_LOG_DEBUG);
 		if(SerialHost.write(bufferPtr, packetSize) != packetSize)
 		{
 			return sentBytes;
 		}
-		SerialHost.flush();
+		vTaskDelay(2);
 		
 		remainingBytes -= packetSize;
 		sentBytes = packetSize;
@@ -191,7 +191,8 @@ uint16_t cdc_Transmit(uint8_t* buffer, size_t len)
 		{
 			return sentBytes;
 		}
-		SerialHost.flush();
+		vTaskDelay(2);
+		
 		
 		remainingBytes -= packetSize;
 		sentBytes += packetSize;
@@ -203,6 +204,7 @@ uint16_t cdc_Transmit(uint8_t* buffer, size_t len)
 			bufferSize = 0;
 			xferCounter = 0;
 			ESP_LOGD(TAG, "CDC transfer complete, %d bytes sent", sentBytes);
+			SerialHost.flush();
 		}
 		else
 		{

@@ -19,6 +19,7 @@ const char* ESP32_TAG = "ESP32_MANAGER";
 // Initialise all included components
 void esp32Manager_Init()
 {
+#ifdef USE_WIFI_RTP_MIDI
 	if(esp32ConfigPtr->wirelessType == Esp32WiFi)
 	{
 		wifi_Connect(WIFI_HOSTNAME, WIFI_AP_SSID, NULL);
@@ -30,6 +31,7 @@ void esp32Manager_Init()
 		wifi_CheckConnectionPing();
 		midi_InitWiFiRTP();
 	}
+#endif
 		
 
 	// Initialise USB host components
@@ -101,6 +103,7 @@ if(taskResult != pdPASS)
 
 void esp32Manager_Process()
 {
+	//usbh_Process();
 	//midi_ProcessTask(NULL);
 	//cdch_ProcessTask(NULL);
 	//usbh_ProcessTask(NULL);

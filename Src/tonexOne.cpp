@@ -866,9 +866,43 @@ esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t select
 	// do framing
 	framedLength = tonexOne_AddFraming(txBuffer, sizeof(message) + tonexData->message.pedalData.stateDataLength, framedBuffer);
 
-	// send it
+	// Before sending the packet, pad the packet with zeros to the nearest 64-byte boundary
+	
+	uint8_t padding = 64 - (framedLength % 64);
+
+/*
+	if (padding < 64)
+	{
+		framedBuffer[framedLength] = 0x7e; // add end marker to the end of the packet
+		framedLength++;
+		memset((void *)&framedBuffer[framedLength], 0x00, padding-2);
+		framedLength += padding-2;
+	}
+	framedBuffer[framedLength] = 0x7e;
+	framedLength++;
+	*/
+
 	size_t sentBytes = cdc_Transmit(framedBuffer, framedLength);
 	//size_t sentBytes = SerialHost.write(framedBuffer, framedLength);
+
+	//size_t sentBytes = SerialHost.write(framedBuffer, 64);
+	//while(SerialHost.availableForWrite() < 64)
+	{
+		//vTaskDelay(1 / portTICK_PERIOD_MS);
+	}
+	//SerialHost.flush();
+	//delay(5);
+	
+	//vTaskDelay(5 / portTICK_PERIOD_MS);
+	//sentBytes = SerialHost.write(&framedBuffer[64], 64);
+	//while(SerialHost.availableForWrite() < 64)
+	{
+		//vTaskDelay(1 / portTICK_PERIOD_MS);
+	}
+	//SerialHost.flush();
+	//vTaskDelay(5 / portTICK_PERIOD_MS);
+	//delay(5);
+	//sentBytes = SerialHost.write(&framedBuffer[128], 46);
 	//SerialHost.flush();
 	ESP_LOGE(TAG, "Data Transmit Complete: %d (%d from driver)", (int)framedLength, sentBytes);
 

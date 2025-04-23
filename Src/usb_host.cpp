@@ -49,7 +49,7 @@ void usbh_Init()
 
 void usbh_Process()
 {
-	USBHost.task(0);
+	USBHost.task();
 }
 
 void usbh_PrintDeviceDescriptor(dev_info_t *dev, uint8_t daddr)

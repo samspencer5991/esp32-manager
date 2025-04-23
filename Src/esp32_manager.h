@@ -11,6 +11,8 @@
 #include <WiFi.h>
 #endif
 
+#include "stdint.h"
+
 #define WIFI_CONNECTED
 
 typedef enum

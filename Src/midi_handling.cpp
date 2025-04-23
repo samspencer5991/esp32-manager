@@ -195,7 +195,7 @@ void midi_ProcessTask(void* parameter)
 		midi_ReadAll();
 		//uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
 		//ESP_LOGD(TAG, "MIDI Process Task High Water Mark: %d", uxHighWaterMark);
-		vTaskDelay(1);
+		vTaskDelay(5);
 	}
 }
 
@@ -386,6 +386,7 @@ void midi_ApplyThruSettings()
 }
 
 // WiFi RTP must be initialised after WiFi is connected
+#ifdef USE_WIFI_RTP_MIDI
 void midi_InitWiFiRTP()
 {
 	if(esp32ConfigPtr->wirelessType != Esp32WiFi)
@@ -412,6 +413,7 @@ void midi_InitWiFiRTP()
 		}
 	}
 }
+#endif
 
 
 
