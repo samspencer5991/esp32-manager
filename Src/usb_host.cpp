@@ -11,11 +11,8 @@
 #define LANGUAGE_ID 0x0409
 
 
-
-
 dev_info_t dev_info[CFG_TUH_DEVICE_MAX] = {0};
 
-SPIClass * usbhSpi = NULL;
 Adafruit_USBH_Host USBHost(new SPIClass(USBH_SPI), USBH_SPI_SCK_PIN, USBH_SPI_MOSI_PIN, USBH_SPI_MISO_PIN, USBH_CS_PIN, USBH_INT_PIN);
 
 

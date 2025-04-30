@@ -7,6 +7,7 @@ void wifi_ProcessTask(void* parameter);
 
 
 uint8_t wifi_Connect(const char* hostName, const char* apName, const char* apPassword);
+uint8_t wifi_Disconnect();
 uint8_t wifi_ConnectionStatus();
 uint8_t wifi_CheckConnectionPing();
 

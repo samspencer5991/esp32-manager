@@ -60,7 +60,7 @@ void esp32Manager_CreateTasks()
 	else
 		ESP_LOGI(ESP32_TAG, "WiFi task created: %d", taskResult);
 
-	
+		/*
 		taskResult = xTaskCreatePinnedToCore(
 		usbh_ProcessTask,
 		"USB Host Process",
@@ -86,11 +86,12 @@ if(taskResult != pdPASS)
 		ESP_LOGE(ESP32_TAG, "Failed to create CDC task: %d", taskResult);
 	else
 		ESP_LOGI(ESP32_TAG, "CDC task created: %d", taskResult);
+*/
 
 	taskResult = xTaskCreatePinnedToCore(
 		midi_ProcessTask,
 		"MIDIProcess",
-		5000,
+		10000,
 		NULL, // parameter of the task 
 		MIDI_TASK_PRIORITY, // priority of the task 
 		NULL, // Task handle to keep track of created task 
@@ -99,6 +100,19 @@ if(taskResult != pdPASS)
 		ESP_LOGE(ESP32_TAG, "Failed to create MIDI task: %d", taskResult);
 	else
 		ESP_LOGI(ESP32_TAG, "MIDI task created: %d", taskResult);
+
+	taskResult = xTaskCreatePinnedToCore(
+		midi_BleInfoTask,
+		"BLE Info Process",
+		5000,
+		NULL, // parameter of the task 
+		BLE_INFO_TASK_PRIORITY, // priority of the task 
+		NULL, // Task handle to keep track of created task 
+		1); // pin task to core 1 
+	if(taskResult != pdPASS)
+		ESP_LOGE(ESP32_TAG, "Failed to create BLE Info task: %d", taskResult);
+	else
+		ESP_LOGI(ESP32_TAG, "BLE Info task created: %d", taskResult);
 }
 
 void esp32Manager_Process()

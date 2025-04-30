@@ -130,6 +130,7 @@ uint16_t cdc_Transmit(uint8_t* buffer, size_t len)
 				return sentBytes;
 			}
 			availableSize = SerialHost.availableForWrite();
+			usbh_Process();
 			vTaskDelay(1/portTICK_PERIOD_MS);
 		}
 		// print the data packet for error checking
@@ -177,10 +178,9 @@ uint16_t cdc_Transmit(uint8_t* buffer, size_t len)
 			{
 				// Flush and try again
 				ESP_LOGE(TAG, "CDC transmit timeout after %d ms", millis() - transmitStartTime);
-				SerialHost.flush();
-				ESP_LOGD(TAG, "Flushing USBH buffers to retry.");
 				return sentBytes;
 			}
+			usbh_Process();
 			availableSize = SerialHost.availableForWrite();
 			vTaskDelay(1/portTICK_PERIOD_MS);
 		}
@@ -191,7 +191,7 @@ uint16_t cdc_Transmit(uint8_t* buffer, size_t len)
 		{
 			return sentBytes;
 		}
-		vTaskDelay(2);
+		//vTaskDelay(2);
 		
 		
 		remainingBytes -= packetSize;

@@ -10,6 +10,10 @@ WiFiManager wifiManager;
 
 const char* WIFI_TAG = "WIFI_MANAGER";
 
+const char* wifiHostName = NULL;
+const char* wifiApName = NULL;
+const char* wifiApPassword = NULL;
+
 void wifi_UpdateInfoTask();
 
 // RTOS Tasks
@@ -19,16 +23,24 @@ void wifi_ProcessTask(void* parameter)
 	//UBaseType_t uxHighWaterMark;
 	while(1)
 	{
-		//uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
-		//ESP_LOGI(WIFI_TAG, "WiFi Process Task High Water Mark: %d", uxHighWaterMark);
-		wifiManager.process();
-		ota_Process();
-		vTaskDelay(10 / portTICK_PERIOD_MS);
-		wifiProcessCount++;
-		if(wifiProcessCount >= 250)
+		if(esp32ConfigPtr->wirelessType != Esp32WiFi)
 		{
-			wifi_UpdateInfoTask();
-			wifiProcessCount = 0;
+			vTaskDelay(1000 / portTICK_PERIOD_MS);
+			continue;
+		}
+		else
+		{
+			//uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
+			//ESP_LOGI(WIFI_TAG, "WiFi Process Task High Water Mark: %d", uxHighWaterMark);
+			wifiManager.process();
+			ota_Process();
+			vTaskDelay(10 / portTICK_PERIOD_MS);
+			wifiProcessCount++;
+			if(wifiProcessCount >= 250)
+			{
+				wifi_UpdateInfoTask();
+				wifiProcessCount = 0;
+			}
 		}
 	}
 }
@@ -39,11 +51,25 @@ void wifi_UpdateInfoTask()
 	wl_status_t status = WiFi.status();
 	if(status != WL_CONNECTED)
 	{
-		esp32Info.wifiConnected = 0;
-		ESP_LOGI(WIFI_TAG, "WiFi not connected, status: %d", status);
+		// Check if the device is in AP mode (config portal) or STA mode (normal connection)
+		wifi_mode_t wifiMode = WiFi.getMode();
+		if(wifiMode == WIFI_MODE_AP)
+		{
+			// If in AP mode, set the connection status to 3 (config portal)
+			esp32Info.wifiConnected = 3;
+			ESP_LOGI(WIFI_TAG, "WiFi in Config Portal (AP mode), status: %d", status);
+		}
+		else if(wifiMode == WIFI_MODE_STA)
+		{
+			// If in STA mode, set the connection status to 0 (not connected)
+			esp32Info.wifiConnected = 0;
+			ESP_LOGI(WIFI_TAG, "WiFi not connected, status: %d", status);
+		}
 	}
 	else
 	{
+		// Set the connection state, assume internet is available as ping is checked on device boot
+		esp32Info.wifiConnected = 2;
 		esp32Info.currentRssi = WiFi.RSSI();
 		ESP_LOGI(WIFI_TAG, "WiFi connected, RSSI: %d", esp32Info.currentRssi);
 	}
@@ -52,6 +78,12 @@ void wifi_UpdateInfoTask()
 // General Functions
 uint8_t wifi_Connect(const char* hostName, const char* apName, const char* apPassword)
 {
+	// Store the WiFi credentials in the global variables
+	wifiHostName = hostName;
+	wifiApName = apName;
+	wifiApPassword = apPassword;
+
+	// Ensure the ESP32 manager is in WiFi mode
 	if(esp32ConfigPtr->wirelessType == Esp32WiFi)
 	{
 		if(hostName != NULL)
@@ -63,7 +95,7 @@ uint8_t wifi_Connect(const char* hostName, const char* apName, const char* apPas
 		if (!wifiManager.autoConnect(apName, apPassword))
 		{
 			ESP_LOGI("WiFi", "Configuration portal beginning");
-			esp32Info.wifiConnected = 0;
+			esp32Info.wifiConnected = 3;
 		}
 		else
 		{
@@ -73,6 +105,14 @@ uint8_t wifi_Connect(const char* hostName, const char* apName, const char* apPas
 			esp32Info.wifiConnected = 1;
 		}
 	}
+	return esp32Info.wifiConnected;
+}
+
+uint8_t wifi_Disconnect()
+{
+	WiFi.disconnect(true);
+	WiFi.mode(WIFI_OFF);
+	esp32Info.wifiConnected = 0;
 	return esp32Info.wifiConnected;
 }
 

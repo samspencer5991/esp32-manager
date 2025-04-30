@@ -57,10 +57,11 @@ typedef struct
 	char currentIP[20];
 	char macAddress[32];
 	uint8_t wifiConnected;	// 0 = not connected, 1 = connected (no internet), 2 = connected (internet)
+	uint8_t bleConnected;	// 0 = not connected, 1 = connected (server)
 } Esp32ManagerInfo;
 
 extern Esp32ManagerConfig* esp32ConfigPtr;	// Pointer to the config structure of the application
-extern Esp32ManagerInfo esp32Info;		// Defined by the ESP32 manager
+extern Esp32ManagerInfo esp32Info;				// Defined by the ESP32 manager
 
 
 

@@ -69,20 +69,20 @@ void (*mPetalProgramChangeCallback)(MidiInterfaceType interface, uint8_t channel
 
 // MIDI thru array pointers
 uint8_t numMidiHandles = 0;
-uint8_t* usbdidiThruHandlesPtr;
-uint8_t* usbhMidiThruHandlesPtr;
-uint8_t* bleMidiThruHandlesPtr;
-uint8_t* wifiMidiThruHandlesPtr;
-uint8_t* serial0MidiThruHandlesPtr;
-uint8_t* serial1MidiThruHandlesPtr;
-uint8_t* serial2MidiThruHandlesPtr;
+uint8_t* usbdMidiThruHandlesPtr = NULL;
+uint8_t* usbhMidiThruHandlesPtr = NULL;
+uint8_t* bleMidiThruHandlesPtr = NULL;
+uint8_t* wifiMidiThruHandlesPtr = NULL;
+uint8_t* serial0MidiThruHandlesPtr = NULL;
+uint8_t* serial1MidiThruHandlesPtr = NULL;
+uint8_t* serial2MidiThruHandlesPtr = NULL;
 
 
 //-------------- MIDI Input/Output Objects & Handling --------------//
 // Bluetooth Low Energy
 #ifdef USE_BLE_MIDI
 
-BLEMIDI_CREATE_CUSTOM_INSTANCE("FootCtrl", blueMidi, BLEMIDI_NAMESPACE::DefaultSettings)
+BLEMIDI_CREATE_INSTANCE(BLE_DEVICE_NAME, blueMidi)
 
 #ifdef USE_BLE_MIDI_CLIENT
 BLEMIDI_CREATE_CUSTOM_INSTANCE("FootCtrl", blueMidiClient, BLEMIDI_NAMESPACE::DefaultSettingsClient)
@@ -131,6 +131,9 @@ MIDI_CREATE_INSTANCE(HardwareSerial, Serial2, serial2Midi);
 
 
 //-------------- Private Function Prototypes --------------//
+void midi_HandleThruRouting(uint8_t* interfacePtr, MidiType type, Channel channel, DataByte data1, DataByte data2);
+
+
 // USBD
 void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size);
 
@@ -195,14 +198,42 @@ void midi_ProcessTask(void* parameter)
 		midi_ReadAll();
 		//uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
 		//ESP_LOGD(TAG, "MIDI Process Task High Water Mark: %d", uxHighWaterMark);
-		vTaskDelay(5);
+		vTaskDelay(2);
 	}
 }
 
+// RTOS Tasks
+void midi_BleInfoTask(void* parameter)
+{
+	static uint16_t bleProcessCount = 0;
+	//UBaseType_t uxHighWaterMark;
+	while(1)
+	{
+		if(esp32ConfigPtr->wirelessType != Esp32BLE)
+		{
+			vTaskDelay(1000 / portTICK_PERIOD_MS);
+			continue;
+		}
+		else
+		{
+			//uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
+			//ESP_LOGI(WIFI_TAG, "WiFi Process Task High Water Mark: %d", uxHighWaterMark);
+			vTaskDelay(10 / portTICK_PERIOD_MS);
+			bleProcessCount++;
+			if(bleProcessCount >= 250)
+			{
+				//wifi_UpdateInfoTask();
+				bleProcessCount = 0;
+			}
+		}
+	}
+}
 
 //-------------- Global Function Definitions --------------//
 void midi_Init()
 {
+	ESP_LOGD(TAG, "Wireless mode: %d", esp32ConfigPtr->wirelessType);
+	ESP_LOGD(TAG, "BLE mode: %d", esp32ConfigPtr->bleMode);
 	// General MIDI callback assignment
 	// USBD
 #ifdef USE_USBD_MIDI
@@ -290,11 +321,6 @@ void midi_Init()
 
 	// Begin MIDI interfaces
 		// USBD
-#ifdef USE_USBD_MIDI
-	ESP_LOGV(TAG, "Starting USBD MIDI");
-	usbdMidi.begin(MIDI_CHANNEL_OMNI);
-	usbdMidi.turnThruOff();
-#endif
 	// BLE
 #ifdef USE_BLE_MIDI
 	if(esp32ConfigPtr->wirelessType == Esp32BLE)
@@ -385,6 +411,16 @@ void midi_ApplyThruSettings()
 #endif
 }
 
+// USBD MIDI must be initialised as soon as possible after boot
+#ifdef USE_USBD_MIDI
+void midi_InitUSBD()
+{
+	ESP_LOGV(TAG, "Starting USBD MIDI");
+	usbdMidi.begin(MIDI_CHANNEL_OMNI);
+	usbdMidi.turnThruOff();
+}
+#endif
+
 // WiFi RTP must be initialised after WiFi is connected
 #ifdef USE_WIFI_RTP_MIDI
 void midi_InitWiFiRTP()
@@ -419,52 +455,130 @@ void midi_InitWiFiRTP()
 
 void midi_ReadAll()
 {
+	// USBD
+#ifdef USE_USBD_MIDI
+	// Thru routing
+	if(usbdMidi.read() && usbdMidiThruHandlesPtr != NULL)
+	{
+		midi_HandleThruRouting(usbdMidiThruHandlesPtr, usbdMidi.getType(), usbdMidi.getChannel(), usbdMidi.getData1(), usbdMidi.getData2());
+	}
+#endif
+	// USBH
+#ifdef USE_USBH_MIDI
+	// Thru routing
+	if(usbhMidi.read() && usbhMidiThruHandlesPtr != NULL)
+	{
+		midi_HandleThruRouting(usbhMidiThruHandlesPtr, usbhMidi.getType(), usbhMidi.getChannel(), usbhMidi.getData1(), usbhMidi.getData2());
+	}
+#endif
+
 	// BLE
 #ifdef USE_BLE_MIDI
 	if(esp32ConfigPtr->wirelessType == Esp32BLE)
 	{
 		if(esp32ConfigPtr->bleMode == Esp32BLEServer)
 		{
-			blueMidi.read();
+			// Thru routing
+			if(blueMidi.read() && bleMidiThruHandlesPtr != NULL)
+			{
+				midi_HandleThruRouting(bleMidiThruHandlesPtr, blueMidi.getType(), blueMidi.getChannel(), blueMidi.getData1(), blueMidi.getData2());
+			}
 		}
 #ifdef USE_BLE_MIDI_CLIENT
 		else
 		{
-			if(blueMidiClient.read())
+			// Thru routing
+			if(blueMidiClient.read() && bleMidiThruHandlesPtr != NULL)
 			{
-				
+				midi_HandleThruRouting(bleMidiThruHandlesPtr, blueMidiClient.getType(), blueMidiClient.getChannel(), blueMidiClient.getData1(), blueMidiClient.getData2());
 			}
 		}
 #endif
-		
+	
 	}
 #endif
 	// WiFi RTP
 #ifdef USE_WIFI_RTP_MIDI
 	if(esp32ConfigPtr->wirelessType == Esp32WiFi && esp32Info.wifiConnected)
 	{
-		rtpMidi.read();
+		// Thru routing
+		if(rtpMidi.read() && wifiMidiThruHandlesPtr != NULL)
+		{
+			midi_HandleThruRouting(wifiMidiThruHandlesPtr, rtpMidi.getType(), rtpMidi.getChannel(), rtpMidi.getData1(), rtpMidi.getData2());
+		}
+	
 	}
 #endif
-	// USBD
-#ifdef USE_USBD_MIDI
-	usbdMidi.read();
-#endif
-	// USBH
-#ifdef USE_USBH_MIDI
-	//midih_Loop();
-#endif
+
 	// Serial0
 #ifdef USE_SERIAL0_MIDI
-	serial0Midi.read();
+	// Thru routing
+	if(serial0Midi.read() && serial0MidiThruHandlesPtr != NULL)
+	{
+		midi_HandleThruRouting(serial0MidiThruHandlesPtr, serial0Midi.getType(), serial0Midi.getChannel(), serial0Midi.getData1(), serial0Midi.getData2());
+	}
 #endif
 	// Serial1
 #ifdef USE_SERIAL1_MIDI
-	serial1Midi.read();
+	// Thru routing
+	if(serial1Midi.read() && serial1MidiThruHandlesPtr != NULL)
+	{
+		midi_HandleThruRouting(serial1MidiThruHandlesPtr, serial1Midi.getType(), serial1Midi.getChannel(), serial1Midi.getData1(), serial1Midi.getData2());
+	}
 #endif
 	// Serial2
 #ifdef USE_SERIAL2_MIDI
-	serial2Midi.read();
+	// Thru routing
+	if(serial2Midi.read() && serial2MidiThruHandlesPtr != NULL)
+	{
+		midi_HandleThruRouting(serial2MidiThruHandlesPtr, serial2Midi.getType(), serial2Midi.getChannel(), serial2Midi.getData1(), serial2Midi.getData2());
+	}
+#endif
+}
+
+void midi_HandleThruRouting(uint8_t* interfacePtr, MidiType type, Channel channel, DataByte data1, DataByte data2)
+{
+	#ifdef USE_USBD_MIDI
+	if(interfacePtr[MidiUSBD] == 1)
+	{
+		usbdMidi.send(type, channel, data1, data2);
+	}
+#endif
+#ifdef USE_USBH_MIDI
+	if(interfacePtr[MidiUSBH] == 1)
+	{
+		usbhMidi.send(type, channel, data1, data2);
+	}
+#endif
+#ifdef USE_BLE_MIDI
+	if(interfacePtr[MidiBLE] == 1)
+	{
+		blueMidi.send(type, channel, data1, data2);
+	}
+#endif
+#ifdef USE_WIFI_RTP_MIDI
+	if(interfacePtr[MidiWiFiRTP] == 1)
+	{
+		rtpMidi.send(type, channel, data1, data2);
+	}
+#endif
+#ifdef USE_SERIAL0_MIDI
+	if(interfacePtr[MidiSerial0] == 1)
+	{
+		serial0Midi.send(type, channel, data1, data2);
+	}
+#endif
+#ifdef USE_SERIAL1_MIDI
+	if(interfacePtr[MidiSerial1] == 1)
+	{
+		serial1Midi.send(type, channel, data1, data2);
+	}
+#endif
+#ifdef USE_SERIAL2_MIDI
+	if(interfacePtr[MidiSerial2] == 1)
+	{
+		serial2Midi.send(type, channel, data1, data2);
+	}
 #endif
 }
 
@@ -548,7 +662,6 @@ void midi_SendPetalProgramChange(uint8_t channel, uint8_t number)
 {
 
 }
-
 
 // Process SysEx data received on any interface.
 void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size)
@@ -715,7 +828,7 @@ void blueMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t val
 	{
 		mControlChangeCallback(MidiBLE, channel, number, value);
 	}
-	ESP_LOGI(TAG, "BLE MIDI CC: Ch: %d, Num: %d, Val: %d\n", channel, number, value);
+	//ESP_LOGI(TAG, "BLE MIDI CC: Ch: %d, Num: %d, Val: %d\n", channel, number, value);
 }
 
 void blueMidi_ProgramChangeCallback(uint8_t channel, uint8_t number)
@@ -724,7 +837,7 @@ void blueMidi_ProgramChangeCallback(uint8_t channel, uint8_t number)
 	{
 		mProgramChangeCallback(MidiBLE, channel, number);
 	}
-	ESP_LOGI(TAG, "BLE MIDI PC: Ch: %d, Num: %d\n", channel, number);
+	//ESP_LOGI(TAG, "BLE MIDI PC: Ch: %d, Num: %d\n", channel, number);
 }
 
 void blueMidi_SysexCallback(uint8_t * array, unsigned size)
@@ -734,19 +847,34 @@ void blueMidi_SysexCallback(uint8_t * array, unsigned size)
 	{
 		mSystemExclusiveCallback(MidiBLE, array, size);
 	}
-	ESP_LOGI(TAG, "BLE MIDI SysEx: Size: %d\n", size);
+	//ESP_LOGI(TAG, "BLE MIDI SysEx: Size: %d\n", size);
+}
+
+void turnOnBLE()
+{
+	bleEnabled = 1;
+	blueMidi.begin();
+}
+
+void turnOffBLE()
+{
+	bleEnabled = 0;
+	//BLUEMIDI.end();
+	NimBLEDevice::deinit(true);
 }
 
 void blueMidi_OnConnected()
 {
 	bleConnected = true;
-	Serial.println("BLE connected");
+	esp32Info.bleConnected = 1;
+	ESP_LOGI(TAG, "BLE connected");
 }
 
 void blueMidi_OnDisconnected()
 {
 	bleConnected = false;
-	Serial.println("BLE disconnected");
+	esp32Info.bleConnected = 0;
+	ESP_LOGI(TAG, "BLE disconnected");
 }
 #endif
 
@@ -892,22 +1020,5 @@ void serial2Midi_SysexCallback(uint8_t * array, unsigned size)
 #if(CORE_DEBUG_LEVEL >= 4)
 	Serial.printf("Serial2 MIDI SysEx: Size: %d\n", size);
 #endif
-}
-#endif
-
-
-//-------------------- BLE Management --------------------//
-#ifdef USE_BLE_MIDI
-void turnOnBLE()
-{
-	bleEnabled = 1;
-	blueMidi.begin();
-}
-
-void turnOffBLE()
-{
-	bleEnabled = 0;
-	//BLUEMIDI.end();
-	NimBLEDevice::deinit(true);
 }
 #endif

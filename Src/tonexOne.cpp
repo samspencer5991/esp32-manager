@@ -3,6 +3,7 @@
 #include "tonexOne.h"
 #include "esp_log.h"
 #include "tonexOne_Parameters.h"
+#include "usb_host.h"
 
 static const char *TAG = "tonexOne";
 
@@ -161,6 +162,9 @@ uint16_t rxDataSize = 0;
 // preset name is proceeded by this byte sequence:
 static const uint8_t presetByteMarker[] = {0xB9, 0x04, 0xB9, 0x02, 0xBC, 0x21};
 
+uint32_t presetChangeSentTime = 0;
+uint8_t presetChangeSent = 0;
+uint8_t stateDataReceived = 0;
 
 
 //---------------------- Public Functions ----------------------//
@@ -441,7 +445,19 @@ void tonexOne_Process()
 						} break;
 					}
 				}
+				// Check for that a state update was received in time when changing presets
+				if(presetChangeSent == 1 && stateDataReceived == 0)
+				{
+					// check for timeout event of 2s
+					if(millis() - presetChangeSentTime > 500)
+					{
+						ESP_LOGE(TAG, "No state data received after preset change. Reset needed.");
+						presetChangeSent = 0;
+						presetChangeSentTime = 0;
+					}
+				}
 		} break;
+
 		case CommsStateIdle:
 		{
 			tonexOne_SendHello();
@@ -781,7 +797,9 @@ esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t select
 		return ESP_FAIL;
 	}
 	uint16_t framedLength;
-
+	presetChangeSentTime = millis();
+	presetChangeSent = 1;
+	stateDataReceived = 0;
 	ESP_LOGI(TAG, "Setting preset %d in slot %d", (int)preset, (int)newSlot);
 
 	// Build message, length to 0 for now                    len LSB  len MSB
@@ -865,12 +883,12 @@ esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t select
 
 	// do framing
 	framedLength = tonexOne_AddFraming(txBuffer, sizeof(message) + tonexData->message.pedalData.stateDataLength, framedBuffer);
-
+	
 	// Before sending the packet, pad the packet with zeros to the nearest 64-byte boundary
 	
 	uint8_t padding = 64 - (framedLength % 64);
 
-/*
+
 	if (padding < 64)
 	{
 		framedBuffer[framedLength] = 0x7e; // add end marker to the end of the packet
@@ -880,30 +898,41 @@ esp_err_t tonexOne_SetPresetInSlot(uint16_t preset, Slot newSlot, uint8_t select
 	}
 	framedBuffer[framedLength] = 0x7e;
 	framedLength++;
-	*/
+	
 
-	size_t sentBytes = cdc_Transmit(framedBuffer, framedLength);
-	//size_t sentBytes = SerialHost.write(framedBuffer, framedLength);
-
-	//size_t sentBytes = SerialHost.write(framedBuffer, 64);
-	//while(SerialHost.availableForWrite() < 64)
+	//size_t sentBytes = cdc_Transmit(framedBuffer, framedLength);
+	size_t sentBytes = SerialHost.write(framedBuffer, 63);
+	SerialHost.flush();
+	sentBytes = SerialHost.write(&framedBuffer[63], 63);
+	SerialHost.flush();
+	sentBytes = SerialHost.write(&framedBuffer[126], 48);
+	SerialHost.flush();
+	
+/*
+	size_t sentBytes = SerialHost.write(framedBuffer, 64);
+	while(SerialHost.availableForWrite() < 64)
 	{
 		//vTaskDelay(1 / portTICK_PERIOD_MS);
+		usbh_Process();
 	}
+	delay(1);
 	//SerialHost.flush();
 	//delay(5);
 	
 	//vTaskDelay(5 / portTICK_PERIOD_MS);
-	//sentBytes = SerialHost.write(&framedBuffer[64], 64);
-	//while(SerialHost.availableForWrite() < 64)
+	sentBytes = SerialHost.write(&framedBuffer[64], 64);
+	while(SerialHost.availableForWrite() < 64)
 	{
 		//vTaskDelay(1 / portTICK_PERIOD_MS);
+		usbh_Process();
 	}
+	delay(1);
 	//SerialHost.flush();
 	//vTaskDelay(5 / portTICK_PERIOD_MS);
 	//delay(5);
-	//sentBytes = SerialHost.write(&framedBuffer[128], 46);
-	//SerialHost.flush();
+	sentBytes = SerialHost.write(&framedBuffer[128], 64);
+	SerialHost.flush();
+	*/
 	ESP_LOGE(TAG, "Data Transmit Complete: %d (%d from driver)", (int)framedLength, sentBytes);
 
 	return 0;
@@ -1178,6 +1207,7 @@ uint16_t tonexOne_ParseValue(uint8_t *message, uint8_t *index)
 
 ParsingStatus tonexOne_ParseState(uint8_t *unframed, uint16_t length, uint16_t index)
 {
+	stateDataReceived = 1;
 	tTonexParameter* param_ptr;
 
 	tonexData->message.header.type = PacketStateUpdate;

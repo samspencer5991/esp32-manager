@@ -49,10 +49,12 @@ typedef enum
 
 //-------------- FreeRTOS Tasks --------------//
 void midi_ProcessTask(void* parameter);
+void midi_BleInfoTask(void* parameter);
 
 void midi_Init();
-void midi_ApplyThruSettings();
+void midi_InitUSBD();
 void midi_InitWiFiRTP();
+void midi_ApplyThruSettings();
 void midi_ReadAll();
 //uint8_t midi_BleConnected();
 
@@ -85,7 +87,4 @@ void midi_AssignPetalSysemExclusiveCallback(void (*callback)(MidiInterfaceType i
 void midi_SendDeviceApiSysExString(const char* array, unsigned size, uint8_t containsFraming);
 void midi_SendPetalSysex(const uint8_t* data, unsigned size);
 
-void midih_Loop();
-void midih_Setup();
-void testRtpSendNote();
 #endif /* MIDI_HANDLING_H_ */
