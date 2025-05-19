@@ -110,6 +110,10 @@ uint8_t wifi_Connect(const char* hostName, const char* apName, const char* apPas
 
 uint8_t wifi_Disconnect()
 {
+	if(esp32Info.wifiConnected == 3)
+	{
+		wifiManager.stopConfigPortal();
+	}
 	WiFi.disconnect(true);
 	WiFi.mode(WIFI_OFF);
 	esp32Info.wifiConnected = 0;

@@ -147,7 +147,7 @@ void print_lsusb(void)
 		dev_info_t *dev = &dev_info[daddr - 1];
 		if (dev->mounted)
 		{
-			Serial0.printf("Device %u: ID %04x:%04x %s %s\r\n", daddr,
+			Serial.printf("\"{newUSBHDevice\":\"Device %u: ID %04x:%04x %s %s\"}~\n", daddr,
 								dev->desc_device.idVendor, dev->desc_device.idProduct,
 								(char *)dev->manufacturer, (char *)dev->product);
 			no_device = false;

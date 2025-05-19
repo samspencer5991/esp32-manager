@@ -14,6 +14,8 @@
 Esp32ManagerConfig* esp32ConfigPtr;
 Esp32ManagerInfo esp32Info;
 
+uint8_t blockWirelessMidi = 0;
+
 const char* ESP32_TAG = "ESP32_MANAGER";
 
 // Initialise all included components
@@ -32,15 +34,15 @@ void esp32Manager_Init()
 		midi_InitWiFiRTP();
 	}
 #endif
-		
-
+ESP_LOGD("test", "debug");
 	// Initialise USB host components
 #ifdef USE_EXTERNAL_USB_HOST
 	usbh_Init();
 	cdc_Init();
 #endif
-
+	ESP_LOGD("test", "debug");
 	midi_Init();
+	
 }
 
 void esp32Manager_CreateTasks()
@@ -60,7 +62,7 @@ void esp32Manager_CreateTasks()
 	else
 		ESP_LOGI(ESP32_TAG, "WiFi task created: %d", taskResult);
 
-		/*
+		
 		taskResult = xTaskCreatePinnedToCore(
 		usbh_ProcessTask,
 		"USB Host Process",
@@ -73,7 +75,7 @@ void esp32Manager_CreateTasks()
 		ESP_LOGE(ESP32_TAG, "Failed to create USB Host task: %d", taskResult);
 	else
 		ESP_LOGI(ESP32_TAG, "USB Host task created: %d", taskResult);
-
+/*
 	taskResult = xTaskCreatePinnedToCore(
 		cdch_ProcessTask,
 		"CDC Host Process",

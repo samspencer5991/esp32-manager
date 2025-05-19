@@ -355,6 +355,9 @@ void midi_Init()
 	ESP_LOGV(TAG, "Starting Serial2 MIDI");
 	serial2Midi.begin(MIDI_CHANNEL_OMNI);
 #endif
+
+	midi_ApplyThruSettings();
+
 }
 
 void midi_ApplyThruSettings()
@@ -474,7 +477,7 @@ void midi_ReadAll()
 
 	// BLE
 #ifdef USE_BLE_MIDI
-	if(esp32ConfigPtr->wirelessType == Esp32BLE)
+	if(esp32ConfigPtr->wirelessType == Esp32BLE && !blockWirelessMidi)
 	{
 		if(esp32ConfigPtr->bleMode == Esp32BLEServer)
 		{
@@ -499,7 +502,7 @@ void midi_ReadAll()
 #endif
 	// WiFi RTP
 #ifdef USE_WIFI_RTP_MIDI
-	if(esp32ConfigPtr->wirelessType == Esp32WiFi && esp32Info.wifiConnected)
+	if(esp32ConfigPtr->wirelessType == Esp32WiFi && esp32Info.wifiConnected && !blockWirelessMidi)
 	{
 		// Thru routing
 		if(rtpMidi.read() && wifiMidiThruHandlesPtr != NULL)
@@ -661,6 +664,38 @@ void midi_SendPetalControlChange(uint8_t channel, uint8_t number, uint8_t value)
 void midi_SendPetalProgramChange(uint8_t channel, uint8_t number)
 {
 
+}
+
+void midi_SendControlChange(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value)
+{
+#ifdef USE_USBD_MIDI
+	if(interface == MidiUSBD)
+		usbdMidi.sendControlChange(channel, number, value);
+#endif
+#ifdef USE_USBH_MIDI
+	if(interface == MidiUSBH)
+		usbhMidi.sendControlChange(channel, number, value);
+#endif
+#ifdef USE_BLE_MIDI
+	if(interface == MidiBLE)
+		blueMidi.sendControlChange(channel, number, value);
+#endif
+#ifdef USE_WIFI_RTP_MIDI
+	if(interface == MidiWiFiRTP)
+		rtpMidi.sendControlChange(channel, number, value);
+#endif
+#ifdef USE_SERIAL0_MIDI
+	if(interface == MidiSerial0)
+		serial0Midi.sendControlChange(channel, number, value);
+#endif
+#ifdef USE_SERIAL1_MIDI
+	if(interface == MidiSerial1)
+		serial1Midi.sendControlChange(channel, number, value);
+#endif
+#ifdef USE_SERIAL2_MIDI
+	if(interface == MidiSerial2)
+		serial2Midi.sendControlChange(channel, number, value);
+#endif
 }
 
 // Process SysEx data received on any interface.

@@ -87,4 +87,6 @@ void midi_AssignPetalSysemExclusiveCallback(void (*callback)(MidiInterfaceType i
 void midi_SendDeviceApiSysExString(const char* array, unsigned size, uint8_t containsFraming);
 void midi_SendPetalSysex(const uint8_t* data, unsigned size);
 
+void midi_SendControlChange(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value);
+
 #endif /* MIDI_HANDLING_H_ */
