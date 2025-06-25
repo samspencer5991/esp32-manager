@@ -24,7 +24,7 @@ void tonexOne_SendGoToPreset(uint8_t presetNum)
 void tonexOne_SendNextPreset()
 {
 	TonexOneMessage message;
-
+	/*
 	if (usb_input_queue == NULL)
 	{
 		ESP_LOGE(TONEX_INTERFACE_TAG, "usb_next_preset queue null");
@@ -43,12 +43,15 @@ void tonexOne_SendNextPreset()
 			ESP_LOGI(TONEX_INTERFACE_TAG, "usb_next_preset queue send success!");
 		}
 	}
+
+	*/
+	tonexOne_NextPreset();
 }
 
 void tonexOne_SendPreviousPreset()
 {
 	TonexOneMessage message;
-
+	/*
 	if (usb_input_queue == NULL)
 	{
 		ESP_LOGE(TONEX_INTERFACE_TAG, "usb_previous_preset queue null");
@@ -67,6 +70,8 @@ void tonexOne_SendPreviousPreset()
 			ESP_LOGI(TONEX_INTERFACE_TAG, "usb_previous_preset queue send success!");
 		}
 	}
+		*/
+	tonexOne_PreviousPreset();
 }
 
 void tonexOne_SendParameter(uint16_t parameter, float value)

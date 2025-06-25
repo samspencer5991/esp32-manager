@@ -39,7 +39,8 @@ void usbh_ProcessTask(void* parameter)
 }
 
 //---------------------- Public Functions ----------------------//
-void usbh_Init()
+void 
+usbh_Init()
 {
 	USBHost.begin(1);
 }

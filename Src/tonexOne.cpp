@@ -470,6 +470,50 @@ void tonexOne_Process()
 	}
 }
 
+void tonexOne_PreviousPreset()
+{
+	uint8_t previousPreset = 0;
+	if (tonexData->message.slotCPreset > 0)
+		tonexData->message.slotCPreset - 1;
+	else
+		previousPreset = MAX_TONEX_ONE_PRESETS - 1;
+
+	// always using Stomp mode C for preset setting
+	if (tonexOne_SetPresetInSlot(tonexData->message.slotCPreset - 1, SlotC, 1) != ESP_OK)
+	{
+		ESP_LOGE(TAG, "Failed to set previous preset!");
+	}
+	else
+	{
+		ESP_LOGI(TAG, "Set previous preset successfully!");
+	}
+}
+
+void tonexOne_NextPreset()
+{
+	uint8_t nextPreset = 0;
+	ESP_LOGD(TAG, "\n1\n");
+	if (tonexData->message.slotCPreset < (MAX_TONEX_ONE_PRESETS - 1))
+	{
+		ESP_LOGD(TAG, "\n1\n");
+		nextPreset = tonexData->message.slotCPreset + 1;
+		ESP_LOGD(TAG, "\n1\n");
+	}
+
+	else
+		nextPreset = 0;
+
+	// always using Stomp mode C for preset setting
+	if (tonexOne_SetPresetInSlot(nextPreset, SlotC, 1) != ESP_OK)
+	{
+		ESP_LOGE(TAG, "Failed to set next preset!");
+	}
+	else
+	{
+		ESP_LOGI(TAG, "Set next preset successfully!");
+	}
+}
+
 
 //---------------------- Private Functions ----------------------//
 esp_err_t tonexOne_ProcessSingleMessage(uint8_t* data, uint16_t length)

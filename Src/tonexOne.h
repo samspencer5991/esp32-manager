@@ -161,4 +161,6 @@ void tonexOne_InitQueue(QueueHandle_t comms_queue);
 void tonexOne_SendHello();
 uint8_t tonexOne_HandleReceivedData(char *rxData, uint16_t len);
 void tonexOne_Process();
+void tonexOne_NextPreset();
+void tonexOne_PreviousPreset();
 #endif // _TONEXONE_H_

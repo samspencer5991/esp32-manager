@@ -279,20 +279,19 @@ void midi_Init()
 	numMidiHandles++;		
 	RTP.setHandleConnected([](const APPLEMIDI_NAMESPACE::ssrc_t & ssrc, const char* name) {
     rtpIsConnected++;
-	 Serial.println("Connected to session");
+	 //Serial.println("Connected to session");
     //Serial.printf("Connected to session %s %s", ssrc, name);
+	 Serial.printf("Connected to session %s\n", name);
   });
   RTP.setHandleDisconnected([](const APPLEMIDI_NAMESPACE::ssrc_t & ssrc) {
     rtpIsConnected--;
-    Serial.printf("Disconnected %s", ssrc);
+    //Serial.printf("Disconnected %s", ssrc);
+	 Serial.println("Disconnected from session");
   });
-  
-  rtpMidi.setHandleNoteOn([](byte channel, byte note, byte velocity) {
-    Serial.printf("NoteOn %d", note);
-  });
-  rtpMidi.setHandleNoteOff([](byte channel, byte note, byte velocity) {
-    Serial.printf("NoteOff %d", note);
-  });
+
+	rtpMidi.setHandleControlChange(rtpMidi_ControlChangeCallback);
+	rtpMidi.setHandleProgramChange(rtpMidi_ProgramChangeCallback);
+	rtpMidi.setHandleSystemExclusive(rtpMidi_SysexCallback);
 #endif
 
 	// Serial0
@@ -541,7 +540,7 @@ void midi_ReadAll()
 
 void midi_HandleThruRouting(uint8_t* interfacePtr, MidiType type, Channel channel, DataByte data1, DataByte data2)
 {
-	#ifdef USE_USBD_MIDI
+#ifdef USE_USBD_MIDI
 	if(interfacePtr[MidiUSBD] == 1)
 	{
 		usbdMidi.send(type, channel, data1, data2);
