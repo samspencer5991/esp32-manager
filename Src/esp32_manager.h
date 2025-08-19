@@ -70,5 +70,6 @@ extern uint8_t blockWirelessMidi;
 void esp32Manager_Init();
 void esp32Manager_CreateTasks();
 void esp32Manager_Process();
+void esp32Manager_EnterBootloader();
 
 #endif // ESP32_HANDLER_H_

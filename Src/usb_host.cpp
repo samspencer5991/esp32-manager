@@ -1,7 +1,7 @@
-#include "usb_host.h"
+
 
 #ifdef USE_EXTERNAL_USB_HOST
-
+#include "usb_host.h"
 #include "SPI.h"
 #include "usb_helpers.h"
 #include "usbh_cdc_handling.h"

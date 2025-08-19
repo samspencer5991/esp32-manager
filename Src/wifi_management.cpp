@@ -5,6 +5,8 @@
 #include <WiFiClientSecure.h>
 #include "ESP32Ping.h"
 #include "esp32_manager.h"
+#include "esp_link.h"
+#include "midi_handling.h"
 
 WiFiManager wifiManager;
 
@@ -72,6 +74,15 @@ void wifi_UpdateInfoTask()
 		esp32Info.wifiConnected = 2;
 		esp32Info.currentRssi = WiFi.RSSI();
 		ESP_LOGI(WIFI_TAG, "WiFi connected, RSSI: %d", esp32Info.currentRssi);
+#ifdef USE_ESP_LINK
+		uint8_t txString[64];
+		txString[0] = (ESP_LINK_PACKET_ADDRESS >> 16) & 0xFF;
+		txString[1] = (ESP_LINK_PACKET_ADDRESS >> 8) & 0xFF;
+		txString[2] = ESP_LINK_PACKET_ADDRESS & 0xFF;
+		txString[3] = ESP_LINK_WIFI_INFO_HEADER;
+		txString[4] = esp32Info.currentRssi;
+		midi_SendSysEx(MidiSerial1, (uint8_t*)txString, 5, 0);
+#endif
 	}
 }
 

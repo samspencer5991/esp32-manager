@@ -3,10 +3,15 @@
 #include "midi_handling.h"
 #include "wifi_management.h"
 #include "WiFi.h"
+#include "soc/rtc_cntl_reg.h"
 
 #ifdef USE_EXTERNAL_USB_HOST
 #include "usb_host.h"
 #include "usbh_cdc_handling.h"
+#endif
+
+#ifdef USE_ESP_LINK
+#include "esp_link.h"
 #endif
 
 #include "esp32_manager_task_priorities.h"
@@ -34,13 +39,11 @@ void esp32Manager_Init()
 		midi_InitWiFiRTP();
 	}
 #endif
-ESP_LOGD("test", "debug");
 	// Initialise USB host components
 #ifdef USE_EXTERNAL_USB_HOST
 	usbh_Init();
 	cdc_Init();
 #endif
-	ESP_LOGD("test", "debug");
 	midi_Init();
 	
 }
@@ -117,6 +120,21 @@ if(taskResult != pdPASS)
 	else
 		ESP_LOGI(ESP32_TAG, "BLE Info task created: %d", taskResult);
 #endif
+
+#ifdef USE_ESP_LINK
+	taskResult = xTaskCreatePinnedToCore(
+		espLink_ProcessTask,
+		"ESP Link Process",
+		10000,
+		NULL, // parameter of the task 
+		BLE_INFO_TASK_PRIORITY, // priority of the task 
+		NULL, // Task handle to keep track of created task 
+		1); // pin task to core 1 
+	if(taskResult != pdPASS)
+		ESP_LOGE(ESP32_TAG, "Failed to create ESP Link Process task: %d", taskResult);
+	else
+		ESP_LOGI(ESP32_TAG, "ESP Link Process task created: %d", taskResult);
+#endif
 	}
 
 void esp32Manager_Process()
@@ -126,4 +144,10 @@ void esp32Manager_Process()
 	//cdch_ProcessTask(NULL);
 	//usbh_ProcessTask(NULL);
 	//wifi_ProcessTask(NULL);
+}
+
+void esp32Manager_EnterBootloader()
+{
+	REG_WRITE(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
+	esp_restart();
 }

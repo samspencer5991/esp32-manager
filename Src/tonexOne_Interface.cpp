@@ -1,3 +1,4 @@
+#ifdef USE_TONEX_ONE
 #include "tonexOne_Interface.h"
 #include "tonexOne.h"
 #include "esp_log.h"
@@ -99,3 +100,4 @@ void tonexOne_SendParameter(uint16_t parameter, float value)
 		}
 	}
 }
+#endif

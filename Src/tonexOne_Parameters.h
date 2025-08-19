@@ -18,7 +18,7 @@ limitations under the License.
 
 #ifndef _TONEXONE_PARAMETERSS_H
 #define _TONEXONE_PARAMETERSS_H
-
+#ifdef USE_TONEX_ONE
 #include "esp_err.h"
 
 #ifdef __cplusplus
@@ -219,5 +219,5 @@ float tonex_params_clamp_value(uint16_t param_index, float value);
 #ifdef __cplusplus
 } // extern "C"
 #endif
-
+#endif
 #endif // _TONEXONE_PARAMETERSS_H

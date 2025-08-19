@@ -1,3 +1,4 @@
+#ifdef USE_TONEX_ONE
 #include "tonexOne_Parameters.h"
 
 #include "freertos/FreeRTOS.h"
@@ -317,3 +318,4 @@ esp_err_t tonexOne_Parameters_Init(void)
 
     return ESP_OK;
 }
+#endif

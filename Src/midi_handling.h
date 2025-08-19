@@ -31,7 +31,7 @@ typedef enum
 #ifdef USE_SERIAL0_MIDI
 	MidiSerial0,
 #endif
-#ifdef USE_SERIAL1_MIDI
+#if defined(USE_SERIAL1_MIDI) || defined(USE_ESP_LINK)
 	MidiSerial1,
 #endif
 #ifdef USE_SERIAL2_MIDI
@@ -88,5 +88,6 @@ void midi_SendDeviceApiSysExString(const char* array, unsigned size, uint8_t con
 void midi_SendPetalSysex(const uint8_t* data, unsigned size);
 
 void midi_SendControlChange(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value);
+void midi_SendSysEx(MidiInterfaceType interface, const uint8_t* array, unsigned size, uint8_t containsFraming);
 
 #endif /* MIDI_HANDLING_H_ */

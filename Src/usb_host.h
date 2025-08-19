@@ -1,6 +1,6 @@
 #ifndef USBHOST_H_
 #define USBHOST_H_
-
+#ifdef USE_EXTERNAL_USB_HOST
 #include <Arduino.h>
 #include <Adafruit_TinyUSB.h>
 
@@ -21,5 +21,5 @@ void usbh_Process();
 
 void usbh_PrintDeviceDescriptor(dev_info_t *dev, uint8_t daddr);
 
-
+#endif
 #endif // USBHOST_H_
