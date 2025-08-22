@@ -5,7 +5,7 @@
     "description": "Provides standard functionality using an ESP32-S3 for Pirate MIDI devices",
     "repository": {
         "type": "git",
-        "url": "https://github.com/samspencer5991/buttons.git"
+        "url": "https://github.com/samspencer5991/esp32-manager.git"
     },
     "frameworks": "arduino",
     "platforms": "espressif32",
