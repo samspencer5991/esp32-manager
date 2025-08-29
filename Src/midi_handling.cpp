@@ -638,46 +638,47 @@ void midi_ReadAll()
 
 void midi_HandleThruRouting(uint8_t* interfacePtr, MidiType type, Channel channel, DataByte data1, DataByte data2)
 {
+	
 #ifdef USE_USBD_MIDI
 	if(interfacePtr[MidiUSBD] == 1)
 	{
-		usbdMidi.send(type, channel, data1, data2);
+		usbdMidi.send(type, data1, data2, channel);
 	}
 #endif
 #ifdef USE_USBH_MIDI
 	if(interfacePtr[MidiUSBH] == 1)
 	{
-		usbhMidi.send(type, channel, data1, data2);
+		usbhMidi.send(type, data1, data2, channel);
 	}
 #endif
 #ifdef USE_BLE_MIDI
 	if(interfacePtr[MidiBLE] == 1)
 	{
-		blueMidi.send(type, channel, data1, data2);
+		blueMidi.send(type, data1, data2, channel);
 	}
 #endif
 #ifdef USE_WIFI_RTP_MIDI
 	if(interfacePtr[MidiWiFiRTP] == 1)
 	{
-		rtpMidi.send(type, channel, data1, data2);
+		rtpMidi.send(type, data1, data2, channel);
 	}
 #endif
 #ifdef USE_SERIAL0_MIDI
 	if(interfacePtr[MidiSerial0] == 1)
 	{
-		serial0Midi.send(type, channel, data1, data2);
+		serial0Midi.send(type, data1, data2, channel);
 	}
 #endif
 #ifdef USE_SERIAL1_MIDI
 	if(interfacePtr[MidiSerial1] == 1)
 	{
-		serial1Midi.send(type, channel, data1, data2);
+		serial1Midi.send(type, data1, data2, channel);
 	}
 #endif
 #ifdef USE_SERIAL2_MIDI
 	if(interfacePtr[MidiSerial2] == 1)
 	{
-		serial2Midi.send(type, channel, data1, data2);
+		serial2Midi.send(type, data1, data2, channel);
 	}
 #endif
 }
@@ -698,20 +699,7 @@ void midi_AssignSysemExclusiveCallback(void (*callback)(MidiInterfaceType interf
 	mSystemExclusiveCallback = callback;
 }
 
-void midi_AssignPetalControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value))
-{
-	mPetalControlChangeCallback = callback;
-}
 
-void midi_AssignPetalProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number))
-{
-	mPetalProgramChangeCallback = callback;
-}
-
-void midi_AssignPetalSysemExclusiveCallback(void (*callback)(MidiInterfaceType interface, uint8_t* array, unsigned size))
-{
-	mPetalSystemExclusiveCallback = callback;
-}
 
 void midi_SendDeviceApiSysExString(const char* array, unsigned size, uint8_t containsFraming)
 {
@@ -763,6 +751,21 @@ void midi_SendPetalControlChange(uint8_t channel, uint8_t number, uint8_t value)
 void midi_SendPetalProgramChange(uint8_t channel, uint8_t number)
 {
 
+}
+
+void midi_AssignPetalControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value))
+{
+	mPetalControlChangeCallback = callback;
+}
+
+void midi_AssignPetalProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number))
+{
+	mPetalProgramChangeCallback = callback;
+}
+
+void midi_AssignPetalSysemExclusiveCallback(void (*callback)(MidiInterfaceType interface, uint8_t* array, unsigned size))
+{
+	mPetalSystemExclusiveCallback = callback;
 }
 
 
