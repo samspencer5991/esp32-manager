@@ -1,6 +1,6 @@
 #ifndef _TONEXONE_H_
 #define _TONEXONE_H_
-#ifdef USE_TONEX_ONE
+
 #include "Adafruit_TinyUSB.h"
 #include "usbh_cdc_handling.h"
 
@@ -163,6 +163,4 @@ uint8_t tonexOne_HandleReceivedData(char *rxData, uint16_t len);
 void tonexOne_Process();
 void tonexOne_NextPreset();
 void tonexOne_PreviousPreset();
-
-#endif
 #endif // _TONEXONE_H_

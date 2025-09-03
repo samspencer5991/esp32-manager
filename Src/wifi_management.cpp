@@ -112,20 +112,6 @@ uint8_t wifi_Connect(const char* hostName, const char* apName, const char* apPas
 		{
 			ESP_LOGI("WiFi", "WiFi connected! @ ");
 			Serial.println(WiFi.macAddress());
-			if(esp32ConfigPtr->useStaticIp)
-			{
-				IPAddress localIP(esp32ConfigPtr->staticIp[0], esp32ConfigPtr->staticIp[1], esp32ConfigPtr->staticIp[2], esp32ConfigPtr->staticIp[3]);
-				IPAddress gateway(esp32ConfigPtr->staticGatewayIp[0], esp32ConfigPtr->staticGatewayIp[1], esp32ConfigPtr->staticGatewayIp[2], esp32ConfigPtr->staticGatewayIp[3]);
-				IPAddress subnet(255, 255, 255, 0);
-				if(!WiFi.config(localIP, gateway, subnet))
-				{
-					ESP_LOGI("WiFi", "Static IP configuration failed.");
-				}
-				else
-				{
-					ESP_LOGI("WiFi", "Static IP configured to: %s", localIP.toString().c_str());
-				}
-			}
 			ota_Begin();
 			esp32Info.wifiConnected = 1;
 		}
