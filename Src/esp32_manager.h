@@ -48,6 +48,9 @@ typedef struct
 	Esp32WiFiMode wifiMode;					// Access point or connected device behaviour by default
 	Esp32BLEMode bleMode;					// Client or server behaviour for BLE
 	ESP32BLEClientFilter bleFilterMode;	// Filter for BLE client mode
+	uint8_t useStaticIp;
+	uint8_t staticIp[4];
+	uint8_t staticGatewayIp[4];
 } Esp32ManagerConfig;
 
 typedef struct

@@ -1,5 +1,5 @@
 #ifdef USE_EXTERNAL_USB_HOST
-
+#ifdef USE_TONEX_ONE
 #include "tonexOne.h"
 #include "esp_log.h"
 #include "tonexOne_Parameters.h"
@@ -1419,5 +1419,5 @@ ParsingStatus tonexOne_RemoveFraming(uint8_t *input, uint16_t inlength, uint8_t 
 
 	return ParsingOk;
 }
-
+#endif
 #endif

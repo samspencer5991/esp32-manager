@@ -1,7 +1,6 @@
 #include "Arduino.h"
 #include "esp32_manager.h"
 #include "MIDI.h"
-#include "midi_Defs.h"
 #include "midi_handling.h"
 
 #ifdef USE_BLE_MIDI
@@ -16,7 +15,7 @@
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
-#include "wifi_management.h"
+#include "WiFi_management.h"
 #endif
 
 #include "SPI.h"
@@ -87,10 +86,6 @@ uint8_t* serial0MidiThruHandlesPtr = NULL;
 uint8_t* serial1MidiThruHandlesPtr = NULL;
 uint8_t* serial2MidiThruHandlesPtr = NULL;
 
-void midi_LinkCreateDataPacket(MidiInterfaceType interface, midi::MidiType type, uint8_t channel, uint8_t data1, uint8_t data2);
-void midi_LinkProcessReceivedData(uint8_t* data, uint16_t size);
-void midi_LinkTransmitDataPacket(MidiInterfaceType interface, uint8_t* data, uint16_t dataSize);
-
 
 //-------------- MIDI Input/Output Objects & Handling --------------//
 // Bluetooth Low Energy
@@ -104,7 +99,6 @@ BLEMIDI_CREATE_CUSTOM_INSTANCE("FootCtrl", blueMidiClient, BLEMIDI_NAMESPACE::De
 
 // State variables
 uint8_t bleEnabled = 0;
-uint8_t newBleEvent = 0;
 bool bleConnected = false;
 #endif
 
@@ -398,7 +392,6 @@ void midi_Init()
 #ifdef USE_ESP_LINK
 	ESP_LOGV(TAG, "Starting MIDI Bridge on Serial1");
 	serial1Midi.begin(MIDI_CHANNEL_OMNI);
-	serial1Midi.turnThruOff();
 #endif
 	// Serial2
 #ifdef USE_SERIAL2_MIDI
@@ -565,9 +558,6 @@ void midi_ReadAll()
 	if(usbdMidi.read() && usbdMidiThruHandlesPtr != NULL)
 	{
 		midi_HandleThruRouting(usbdMidiThruHandlesPtr, usbdMidi.getType(), usbdMidi.getChannel(), usbdMidi.getData1(), usbdMidi.getData2());
-#ifdef USE_ESP_LINK
-		midi_LinkCreateDataPacket(MidiUSBD, usbdMidi.getType(), usbdMidi.getChannel(), usbdMidi.getData1(), usbdMidi.getData2());
-#endif
 	}
 #endif
 	// USBH
@@ -576,9 +566,6 @@ void midi_ReadAll()
 	if(usbhMidi.read() && usbhMidiThruHandlesPtr != NULL)
 	{
 		midi_HandleThruRouting(usbhMidiThruHandlesPtr, usbhMidi.getType(), usbhMidi.getChannel(), usbhMidi.getData1(), usbhMidi.getData2());
-#ifdef USE_ESP_LINK
-		midi_LinkCreateDataPacket(MidiUSBH, usbhMidi.getType(), usbhMidi.getChannel(), usbhMidi.getData1(), usbhMidi.getData2());
-#endif
 	}
 #endif
 
@@ -592,9 +579,6 @@ void midi_ReadAll()
 			if(blueMidi.read() && bleMidiThruHandlesPtr != NULL)
 			{
 				midi_HandleThruRouting(bleMidiThruHandlesPtr, blueMidi.getType(), blueMidi.getChannel(), blueMidi.getData1(), blueMidi.getData2());
-#ifdef USE_ESP_LINK
-				midi_LinkCreateDataPacket(MidiBLE, blueMidi.getType(), blueMidi.getChannel(), blueMidi.getData1(), blueMidi.getData2());
-#endif
 			}
 		}
 #ifdef USE_BLE_MIDI_CLIENT
@@ -604,9 +588,6 @@ void midi_ReadAll()
 			if(blueMidiClient.read() && bleMidiThruHandlesPtr != NULL)
 			{
 				midi_HandleThruRouting(bleMidiThruHandlesPtr, blueMidiClient.getType(), blueMidiClient.getChannel(), blueMidiClient.getData1(), blueMidiClient.getData2());
-#ifdef USE_ESP_LINK
-				midi_LinkCreateDataPacket(MidiBLE, blueMidiClient.getType(), blueMidiClient.getChannel(), blueMidiClient.getData1(), blueMidiClient.getData2());
-#endif
 			}
 		}
 #endif
@@ -621,9 +602,6 @@ void midi_ReadAll()
 		if(rtpMidi.read() && wifiMidiThruHandlesPtr != NULL)
 		{
 			midi_HandleThruRouting(wifiMidiThruHandlesPtr, rtpMidi.getType(), rtpMidi.getChannel(), rtpMidi.getData1(), rtpMidi.getData2());
-#ifdef USE_ESP_LINK
-			midi_LinkCreateDataPacket(MidiWiFiRTP, rtpMidi.getType(), rtpMidi.getChannel(), rtpMidi.getData1(), rtpMidi.getData2());
-#endif
 		}
 	
 	}
@@ -635,9 +613,6 @@ void midi_ReadAll()
 	if(serial0Midi.read() && serial0MidiThruHandlesPtr != NULL)
 	{
 		midi_HandleThruRouting(serial0MidiThruHandlesPtr, serial0Midi.getType(), serial0Midi.getChannel(), serial0Midi.getData1(), serial0Midi.getData2());
-#ifdef USE_ESP_LINK
-		midi_LinkCreateDataPacket(MidiSerial0, serial0Midi.getType(), serial0Midi.getChannel(), serial0Midi.getData1(), serial0Midi.getData2());
-#endif
 	}
 #endif
 	// Serial1
@@ -657,55 +632,53 @@ void midi_ReadAll()
 	if(serial2Midi.read() && serial2MidiThruHandlesPtr != NULL)
 	{
 		midi_HandleThruRouting(serial2MidiThruHandlesPtr, serial2Midi.getType(), serial2Midi.getChannel(), serial2Midi.getData1(), serial2Midi.getData2());
-#ifdef USE_ESP_LINK
-		midi_LinkCreateDataPacket(MidiSerial2, serial2Midi.getType(), serial2Midi.getChannel(), serial2Midi.getData1(), serial2Midi.getData2());
-#endif
 	}
 #endif
 }
 
 void midi_HandleThruRouting(uint8_t* interfacePtr, MidiType type, Channel channel, DataByte data1, DataByte data2)
 {
+	
 #ifdef USE_USBD_MIDI
 	if(interfacePtr[MidiUSBD] == 1)
 	{
-		usbdMidi.send(type, channel, data1, data2);
+		usbdMidi.send(type, data1, data2, channel);
 	}
 #endif
 #ifdef USE_USBH_MIDI
 	if(interfacePtr[MidiUSBH] == 1)
 	{
-		usbhMidi.send(type, channel, data1, data2);
+		usbhMidi.send(type, data1, data2, channel);
 	}
 #endif
 #ifdef USE_BLE_MIDI
 	if(interfacePtr[MidiBLE] == 1)
 	{
-		blueMidi.send(type, channel, data1, data2);
+		blueMidi.send(type, data1, data2, channel);
 	}
 #endif
 #ifdef USE_WIFI_RTP_MIDI
 	if(interfacePtr[MidiWiFiRTP] == 1)
 	{
-		rtpMidi.send(type, channel, data1, data2);
+		rtpMidi.send(type, data1, data2, channel);
 	}
 #endif
 #ifdef USE_SERIAL0_MIDI
 	if(interfacePtr[MidiSerial0] == 1)
 	{
-		serial0Midi.send(type, channel, data1, data2);
+		serial0Midi.send(type, data1, data2, channel);
 	}
 #endif
 #ifdef USE_SERIAL1_MIDI
 	if(interfacePtr[MidiSerial1] == 1)
 	{
-		serial1Midi.send(type, channel, data1, data2);
+		serial1Midi.send(type, data1, data2, channel);
 	}
 #endif
 #ifdef USE_SERIAL2_MIDI
 	if(interfacePtr[MidiSerial2] == 1)
 	{
-		serial2Midi.send(type, channel, data1, data2);
+		serial2Midi.send(type, data1, data2, channel);
 	}
 #endif
 }
@@ -726,20 +699,7 @@ void midi_AssignSysemExclusiveCallback(void (*callback)(MidiInterfaceType interf
 	mSystemExclusiveCallback = callback;
 }
 
-void midi_AssignPetalControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value))
-{
-	mPetalControlChangeCallback = callback;
-}
 
-void midi_AssignPetalProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number))
-{
-	mPetalProgramChangeCallback = callback;
-}
-
-void midi_AssignPetalSysemExclusiveCallback(void (*callback)(MidiInterfaceType interface, uint8_t* array, unsigned size))
-{
-	mPetalSystemExclusiveCallback = callback;
-}
 
 void midi_SendDeviceApiSysExString(const char* array, unsigned size, uint8_t containsFraming)
 {
@@ -775,100 +735,6 @@ void midi_SendDeviceApiSysExString(const char* array, unsigned size, uint8_t con
 #endif
 }
 
-// Process SysEx data received on any interface.
-void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size)
-{
-	// If this is the first SysEx packet received in the reception
-	if(array[0] == SYSEX_START)
-	{
-		// Check for a valid received address
-		// Petal communication and Device API use a specific address
-		// General SysEx and ESP Link messages do not require an address
-		if(array[1] == SYSEX_ADDRESS_BYTE1 &&
-			array[2] == SYSEX_ADDRESS_BYTE2 &&
-			array[3] == SYSEX_ADDRESS_BYTE3)
-		{
-			receivedSysExAddress = 1;
-			if(array[4] == SYSEX_DEVICE_API_COMMAND)
-				sysExCommand = SysExDeviceApi;
-			else if(array[4] == SYSEX_PETAL_COMMAND)
-				sysExCommand = SysExPetal;
-			else
-				sysExCommand = SysExGeneral;
-
-			// For non-general SysEx receptions
-			if(sysExCommand != SysExGeneral)
-			{
-				sysExRxLock = interface;
-				// Copy the received SysEx address to the buffer
-				// The start/end, address, and command bytes are not copied
-				memcpy(&sysExBuffer[0], &array[5], size-6);
-				sysExBufferIndex = size-6;
-			}
-		}
-#ifdef USE_ESP_LINK
-		else if(array[1] >= ESP_LINK_DEVICE_INFO_HEADER && array[1] <= ESP_LINK_MIDI_DATA_HEADER)
-		{
-			sysExRxLock = MidiNone;
-			sysExCommand = SysExEspLink;
-		}
-#endif
-		else
-		{
-			sysExRxLock = MidiNone;
-			sysExCommand = SysExGeneral;
-		}
-		if(array[size-1] == SYSEX_END)
-		{
-			sysExRxComplete = 1;
-			sysExLastReceptionType = interface;
-			sysExRxLock = MidiNone;
-		}
-	}
-	// Continuation of existing reception
-	else if(array[0] == SYSEX_END)
-	{
-		// For non-general SysEx receptions
-		if(sysExCommand != SysExGeneral)
-		{
-			// Copy the received SysEx address to the buffer
-			// The start/end, address, and command bytes are not copied
-			memcpy(&sysExBuffer[sysExBufferIndex], &array[5], size-2);
-			sysExBufferIndex += size-2;
-		}
-		if(array[size-1] == SYSEX_END)
-		{
-			sysExRxComplete = 1;
-			sysExLastReceptionType = interface;
-			sysExRxLock = MidiNone;
-		}
-	}
-	if(sysExRxComplete)
-	{
-		Serial.printf("SysEx Complete with %d bytes with command type %d on port %d \n", sysExBufferIndex, sysExCommand, interface);
-		if(sysExCommand == SysExDeviceApi)
-		{
-			deviceApi_Handler((char*)sysExBuffer, MIDI_TRANSPORT);
-		}
-		else if(sysExCommand == SysExPetal)
-		{
-
-		}
-		else if(sysExCommand == SysExGeneral && mSystemExclusiveCallback != nullptr)
-		{
-			mSystemExclusiveCallback(MidiUSBD, sysExBuffer, sysExBufferIndex);
-		}
-		else if(sysExCommand == SysExEspLink)
-		{
-			midi_LinkProcessReceivedData(sysExBuffer, sysExBufferIndex);
-		}
-		sysExRxComplete = 0;
-		sysExBufferIndex = 0;
-		sysExRxLock = MidiNone;
-		sysExCommand = SysExGeneral;
-	}
-}
-
 
 //-------------- Petal Specific Functions --------------//
 // These are typically called by the Petal execution
@@ -887,40 +753,23 @@ void midi_SendPetalProgramChange(uint8_t channel, uint8_t number)
 
 }
 
-
-//-------------- Transmit Functions --------------//
-void midi_SendMessage(MidiInterfaceType interface, MidiType type, uint8_t channel, uint8_t data1, uint8_t data2)
+void midi_AssignPetalControlChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value))
 {
-#ifdef USE_USBD_MIDI
-	if(interface == MidiUSBD)
-		usbdMidi.send(type, data1, data2, channel);
-#endif
-#ifdef USE_USBH_MIDI
-	if(interface == MidiUSBH)
-		usbdMidi.send(type, data1, data2, channel);
-#endif
-#ifdef USE_BLE_MIDI
-	if(interface == MidiBLE)
-		usbdMidi.send(type, data1, data2, channel);
-#endif
-#ifdef USE_WIFI_RTP_MIDI
-	if(interface == MidiWiFiRTP)
-		usbdMidi.send(type, data1, data2, channel);
-#endif
-#ifdef USE_SERIAL0_MIDI
-	if(interface == MidiSerial0)
-		usbdMidi.send(type, data1, data2, channel);
-#endif
-#ifdef USE_SERIAL1_MIDI
-	if(interface == MidiSerial1)
-		usbdMidi.send(type, data1, data2, channel);
-#endif
-#ifdef USE_SERIAL2_MIDI
-	if(interface == MidiSerial2)
-		usbdMidi.send(type, data1, data2, channel);
-#endif
+	mPetalControlChangeCallback = callback;
 }
 
+void midi_AssignPetalProgramChangeCallback(void (*callback)(MidiInterfaceType interface, uint8_t channel, uint8_t number))
+{
+	mPetalProgramChangeCallback = callback;
+}
+
+void midi_AssignPetalSysemExclusiveCallback(void (*callback)(MidiInterfaceType interface, uint8_t* array, unsigned size))
+{
+	mPetalSystemExclusiveCallback = callback;
+}
+
+
+//-------------- Transmit Functions --------------//
 void midi_SendControlChange(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value)
 {
 #ifdef USE_USBD_MIDI
@@ -967,113 +816,108 @@ void midi_SendSysEx(MidiInterfaceType interface, const uint8_t* array, unsigned 
 
 //-------------- MIDI Link Functions --------------//
 #ifdef USE_ESP_LINK
-void midi_LinkCreateDataPacket(MidiInterfaceType interface, midi::MidiType type, uint8_t channel, uint8_t data1, uint8_t data2)
+void midi_LinkControlChangeHandler(MidiInterfaceType interface, uint8_t channel, uint8_t number, uint8_t value)
 {
-	// Because of the unknown data length, SysEx messages are handled separately
-	uint8_t data[3];
-	uint8_t dataSize = 0;
-	// Channel messages
-	if(type <= midi::PitchBend)
-	{
-		data[0] = type | ((channel-1) & 0x0F);
-		data[1] = data1;
-		data[2] = data2;
-		// 1 Data byte messages
-		if(type == midi::ProgramChange || type == midi::AfterTouchChannel)
-			dataSize = 2;
-
-		// 2 Data byte messages
-		else
-			dataSize = 3;
-
-	}
-	// System Common messages
-	else if(type != midi::SystemExclusive)
-	{
-		data[0] = type;
-		data[1] = data1;
-		data[2] = data2;
-
-		// 2 Data byte messages
-		if(type == midi::SongPosition)
-			dataSize = 3;
-
-		// 1 Data byte messages
-		else if(type == midi::SongSelect || type == midi::TimeCodeQuarterFrame)
-			dataSize = 2;
-
-		else
-			dataSize = 1;
-
-	}
-	midi_LinkTransmitDataPacket(interface, data, dataSize);
-	
-}
-
-void midi_LinkTransmitDataPacket(MidiInterfaceType interface, uint8_t* data, uint16_t dataSize)
-{
-	uint8_t packetSize = 3 + dataSize; // 3 byte address, 1 byte header
-	uint8_t packet[packetSize];
-	packet[0] = ESP_LINK_MIDI_DATA_HEADER;		// Packet type
-
-#ifdef USE_USBD_MIDI
+	// Packetise the received CC message into a sysex packet
+	#ifdef USE_USBD_MIDI
 	if(interface == MidiUSBD)
 	{
-		packet[1] = LINK_USBD_MIDI_ID;						// MIDI port
+		uint8_t packetSize = 3 + 2 + 3; // 3 byte address, 2 byte header, 3 byte data
+		uint8_t sysexPacket[packetSize];
+		sysexPacket[0] = SYSEX_ADDRESS_BYTE1;
+		sysexPacket[1] = SYSEX_ADDRESS_BYTE2;
+		sysexPacket[2] = SYSEX_ADDRESS_BYTE3;
+		sysexPacket[3] = ESP_LINK_MIDI_DATA_HEADER;
+		sysexPacket[4] = USBD_MIDI_ID;
+		sysexPacket[5] = channel;
+		sysexPacket[6] = number;
+		sysexPacket[7] = value;
+		serial1Midi.sendSysEx(packetSize, sysexPacket, false);
 	}
-#endif
-#ifdef USE_USBH_MIDI
-	if(interface == MidiUSBH)
-	{
-		packet[1] = LINK_USBH_MIDI_ID;						// MIDI port
-	}
-#endif
-#ifdef USE_BLE_MIDI
-	if(interface == MidiBLE)
-	{
-		packet[1] = LINK_BLE_MIDI_ID;
-	}
-#endif
-#ifdef USE_WIFI_RTP_MIDI
-	if(interface == MidiWiFiRTP)
-	{
-		packet[1] = LINK_WIFI_RTP_MIDI_ID;
-	}
-#endif
-#ifdef USE__SERIAL0_MIDI
-	if(interface == MidiSerial0)
-	{
-		packet[1] = LINK_SERIAL0_MIDI_ID;
-	}
-#endif
-// Serial1 is always ESP Link
-#ifdef USE__SERIAL2_MIDI
-	if(interface == MidiSerial2)
-	{
-		packet[1] = LINK_SERIAL2_MIDI_ID;
-	}
-#endif
-	packet[2] = dataSize;								// Number of data bytes
-	for(uint16_t i=0; i<dataSize; i++)
-	{
-		packet[3+i] = data[i];
-	}
-	serial1Midi.sendSysEx(packetSize, packet, false);
-
+	#endif
 }
+#endif
 
-void midi_LinkProcessReceivedData(uint8_t* data, uint16_t size)
+// Process SysEx data received on any interface.
+void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size)
 {
-	// Device info header
-
-	// MIDI data packet
-	if(data[0] == ESP_LINK_MIDI_DATA_HEADER)
+	// If this is the first SysEx packet received in the reception
+	if(array[0] == SYSEX_START)
 	{
+		// Check for a valid received address
+		if(array[1] == SYSEX_ADDRESS_BYTE1 &&
+			array[2] == SYSEX_ADDRESS_BYTE2 &&
+			array[3] == SYSEX_ADDRESS_BYTE3)
+		{
+			receivedSysExAddress = 1;
+			if(array[4] == SYSEX_DEVICE_API_COMMAND)
+				sysExCommand = SysExDeviceApi;
+			else if(array[4] == SYSEX_PETAL_COMMAND)
+				sysExCommand = SysExPetal;
+			else
+				sysExCommand = SysExGeneral;
 
+			// For non-general SysEx receptions
+			if(sysExCommand != SysExGeneral)
+			{
+				sysExRxLock = interface;
+				// Copy the received SysEx address to the buffer
+				// The start/end, address, and command bytes are not copied
+				memcpy(&sysExBuffer[0], &array[5], size-6);
+				sysExBufferIndex = size-6;
+			}
+		}
+		else
+		{
+			sysExRxLock = MidiNone;
+			sysExCommand = SysExGeneral;
+		}
+		if(array[size-1] == SYSEX_END)
+		{
+			sysExRxComplete = 1;
+			sysExLastReceptionType = sysExRxLock;
+			sysExRxLock = MidiNone;
+		}
+	}
+	// Continuation of existing reception
+	else if(array[0] == SYSEX_END)
+	{
+		// For non-general SysEx receptions
+		if(sysExCommand != SysExGeneral)
+		{
+			// Copy the received SysEx address to the buffer
+			// The start/end, address, and command bytes are not copied
+			memcpy(&sysExBuffer[sysExBufferIndex], &array[5], size-2);
+			sysExBufferIndex += size-2;
+		}
+		if(array[size-1] == SYSEX_END)
+		{
+			sysExRxComplete = 1;
+			sysExLastReceptionType = sysExRxLock;
+			sysExRxLock = MidiNone;
+		}
+	}
+	if(sysExRxComplete)
+	{
+		Serial.printf("SysEx Complete with %d bytes with command type %d on port %d \n", sysExBufferIndex, sysExCommand, interface);
+		if(sysExCommand == SysExDeviceApi)
+		{
+			deviceApi_Handler((char*)sysExBuffer, MIDI_TRANSPORT);
+		}
+		else if(sysExCommand == SysExPetal)
+		{
+
+		}
+		else if(sysExCommand == SysExGeneral && mSystemExclusiveCallback != nullptr)
+		{
+			mSystemExclusiveCallback(MidiUSBD, sysExBuffer, sysExBufferIndex);
+		}
+		sysExRxComplete = 0;
+		sysExBufferIndex = 0;
+		sysExRxLock = MidiNone;
+		sysExCommand = SysExGeneral;
 	}
 }
-
-#endif
 
 
 //-------------- Handle Specific Functions --------------//
@@ -1086,6 +930,12 @@ void usbdMidi_ControlChangeCallback(uint8_t channel, uint8_t number, uint8_t val
 	{
 		mControlChangeCallback(MidiUSBD, channel, number, value);
 	}
+	// MIDI Link callback
+#ifdef USE_ESP_LINK
+
+	mPetalControlChangeCallback(MidiUSBD, channel, number, value);
+
+#endif
 	//ESP_LOGI(TAG, "USBD MIDI CC: Ch: %d, Num: %d, Val: %d\n", channel, number, value);
 
 }
@@ -1187,7 +1037,6 @@ void turnOffBLE()
 void blueMidi_OnConnected()
 {
 	bleConnected = true;
-	newBleEvent = 1;
 	esp32Info.bleConnected = 1;
 	ESP_LOGI(TAG, "BLE connected");
 }
@@ -1195,7 +1044,6 @@ void blueMidi_OnConnected()
 void blueMidi_OnDisconnected()
 {
 	bleConnected = false;
-	newBleEvent = 1;
 	esp32Info.bleConnected = 0;
 	ESP_LOGI(TAG, "BLE disconnected");
 }
