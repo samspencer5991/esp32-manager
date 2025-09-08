@@ -87,9 +87,11 @@ uint8_t* serial0MidiThruHandlesPtr = NULL;
 uint8_t* serial1MidiThruHandlesPtr = NULL;
 uint8_t* serial2MidiThruHandlesPtr = NULL;
 
+#ifdef USE_BLE_MIDI
 void midi_LinkCreateDataPacket(MidiInterfaceType interface, midi::MidiType type, uint8_t channel, uint8_t data1, uint8_t data2);
 void midi_LinkProcessReceivedData(uint8_t* data, uint16_t size);
 void midi_LinkTransmitDataPacket(MidiInterfaceType interface, uint8_t* data, uint16_t dataSize);
+#endif
 
 
 //-------------- MIDI Input/Output Objects & Handling --------------//
@@ -858,10 +860,12 @@ void processSysEx(MidiInterfaceType interface, uint8_t* array, unsigned size)
 		{
 			mSystemExclusiveCallback(MidiUSBD, sysExBuffer, sysExBufferIndex);
 		}
+#ifdef USE_ESP_LINK
 		else if(sysExCommand == SysExEspLink)
 		{
 			midi_LinkProcessReceivedData(sysExBuffer, sysExBufferIndex);
 		}
+#endif
 		sysExRxComplete = 0;
 		sysExBufferIndex = 0;
 		sysExRxLock = MidiNone;
