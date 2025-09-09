@@ -35,7 +35,8 @@ void esp32Manager_Init()
 		esp32Info.currentRssi = WiFi.RSSI();
 		strcpy(esp32Info.currentIP, WiFi.localIP().toString().c_str());
 		// Check an internet ping
-		wifi_CheckConnectionPing();
+		if(esp32Info.wifiConnected != 0)
+			wifi_CheckConnectionPing();
 		midi_InitWiFiRTP();
 	}
 #endif
@@ -55,7 +56,7 @@ void esp32Manager_CreateTasks()
 	taskResult = xTaskCreatePinnedToCore(
 		wifi_ProcessTask, 	// Task function. 
 		"WiFiProcess", 		// name of task. 
-		3000, 					// Stack size of task 
+		5000, 					// Stack size of task 
 		NULL, 					// parameter of the task 
 		WIFI_TASK_PRIORITY, 						// priority of the task 
 		NULL, 					// Task handle to keep track of created task 
@@ -96,7 +97,7 @@ if(taskResult != pdPASS)
 	taskResult = xTaskCreatePinnedToCore(
 		midi_ProcessTask,
 		"MIDIProcess",
-		10000,
+		20000,
 		NULL, // parameter of the task 
 		MIDI_TASK_PRIORITY, // priority of the task 
 		NULL, // Task handle to keep track of created task 

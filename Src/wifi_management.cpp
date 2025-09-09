@@ -16,6 +16,8 @@ const char* wifiHostName = NULL;
 const char* wifiApName = NULL;
 const char* wifiApPassword = NULL;
 
+uint8_t newWifiEvent = 0;
+
 void wifi_UpdateInfoTask();
 
 // RTOS Tasks
@@ -36,9 +38,9 @@ void wifi_ProcessTask(void* parameter)
 			//ESP_LOGI(WIFI_TAG, "WiFi Process Task High Water Mark: %d", uxHighWaterMark);
 			wifiManager.process();
 			ota_Process();
-			vTaskDelay(10 / portTICK_PERIOD_MS);
+			vTaskDelay(2 / portTICK_PERIOD_MS);
 			wifiProcessCount++;
-			if(wifiProcessCount >= 250)
+			if(wifiProcessCount >= 1000)
 			{
 				wifi_UpdateInfoTask();
 				wifiProcessCount = 0;
@@ -51,24 +53,31 @@ void wifi_UpdateInfoTask()
 {
 	// Check the WiFi connection status
 	wl_status_t status = WiFi.status();
-	if(status != WL_CONNECTED)
+	static wl_status_t lastStatus = WL_DISCONNECTED;
+	if(status != lastStatus)
 	{
-		// Check if the device is in AP mode (config portal) or STA mode (normal connection)
-		wifi_mode_t wifiMode = WiFi.getMode();
-		if(wifiMode == WIFI_MODE_AP)
+		if(status != WL_CONNECTED)
 		{
-			// If in AP mode, set the connection status to 3 (config portal)
-			esp32Info.wifiConnected = 3;
-			ESP_LOGI(WIFI_TAG, "WiFi in Config Portal (AP mode), status: %d", status);
+			// Check if the device is in AP mode (config portal) or STA mode (normal connection)
+			wifi_mode_t wifiMode = WiFi.getMode();
+			if(wifiMode == WIFI_MODE_AP)
+			{
+				// If in AP mode, set the connection status to 3 (config portal)
+				esp32Info.wifiConnected = 3;
+				ESP_LOGI(WIFI_TAG, "WiFi in Config Portal (AP mode), status: %d", status);
+			}
+			else if(wifiMode == WIFI_MODE_STA)
+			{
+				// If in STA mode, set the connection status to 0 (not connected)
+				esp32Info.wifiConnected = 0;
+
+				ESP_LOGI(WIFI_TAG, "WiFi not connected, status: %d", status);
+			}
 		}
-		else if(wifiMode == WIFI_MODE_STA)
-		{
-			// If in STA mode, set the connection status to 0 (not connected)
-			esp32Info.wifiConnected = 0;
-			ESP_LOGI(WIFI_TAG, "WiFi not connected, status: %d", status);
-		}
+		lastStatus = status;
+		newWifiEvent = 1;
 	}
-	else
+	if(status == WL_CONNECTED)
 	{
 		// Set the connection state, assume internet is available as ping is checked on device boot
 		esp32Info.wifiConnected = 2;

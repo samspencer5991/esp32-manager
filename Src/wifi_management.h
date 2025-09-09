@@ -13,6 +13,8 @@ uint8_t wifi_CheckConnectionPing();
 
 void wifi_ResetSettings();
 
+extern uint8_t newWifiEvent;
+
 //__weak void wifi_ConnectedCallback
 
 #endif // WIFI_MANAGEMENT_H_

@@ -226,7 +226,7 @@ void midi_ProcessTask(void* parameter)
 		midi_ReadAll();
 		//uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
 		//ESP_LOGD(TAG, "MIDI Process Task High Water Mark: %d", uxHighWaterMark);
-		vTaskDelay(2);
+		vTaskDelay(1);
 	}
 }
 
